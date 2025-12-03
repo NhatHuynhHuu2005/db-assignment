@@ -42,3 +42,25 @@ Backend sẽ chạy tại cổng `5000`.
    ```bash
    cd uniqlo-backend
    ```
+
+2. Cài đặt các thư viện:
+   ```bash
+   npm install
+   ```
+
+3. Cấu hình biến môi trường:
+> - Copy file `.env.example` thành file `.env`
+> - Mở file `.env` và điền mật khẩu SQL Server của bạn vào:
+   ```bash
+   PORT=5000
+   DB_SERVER=127.0.0.1
+   DB_USER=sa
+   DB_PASSWORD=DIEN_MAT_KHAU_CUA_BAN_VAO_DAY
+   DB_NAME=UNIQLO_DB
+   ```
+
+4. Khởi động server:
+   ```bash
+   npm run dev
+   ```
+   *Nếu thấy thông báo `✅ Connected to SQL Server successfully!` là thành công.*
