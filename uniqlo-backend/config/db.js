@@ -11,7 +11,7 @@ const config = {
   port: parseInt(process.env.DB_PORT) || 1433,
 
   user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || 'nhathuynh2005',
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'UNIQLO_DB',
   
   options: {
