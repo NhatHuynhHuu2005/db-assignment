@@ -1,0 +1,31 @@
+/uniqlo-ecommerce-app
+├── /BE (Backend - Node.js/Express)
+│   ├── /config
+│   │   └── db.js         // Cấu hình kết nối SQL Server
+│   ├── /controllers
+│   │   └── productController.js // Controller cho CRUD sản phẩm (3.1)
+│   │   └── reportController.js  // Controller cho báo cáo/truy vấn (3.2, 3.3)
+│   ├── /routes
+│   │   └── productRoutes.js     // Định tuyến API cho CRUD
+│   │   └── reportRoutes.js      // Định tuyến API cho báo cáo
+│   ├── server.js           // Điểm khởi chạy ứng dụng
+│   └── package.json
+├── /FE (Frontend - React/TypeScript/SCSS)
+│   ├── /src
+│   │   ├── /api
+│   │   │   └── api.ts             // Hàm gọi API
+│   │   ├── /components
+│   │   │   ├── /common
+│   │   │   │   └── DataTable.tsx   // Component bảng hiển thị
+│   │   │   │   └── Paginator.tsx   // Component phân trang
+│   │   │   ├── /products
+│   │   │   │   ├── ProductList.tsx // Danh sách/CRUD sản phẩm (3.1)
+│   │   │   │   └── ProductForm.tsx // Form thêm/sửa sản phẩm
+│   │   │   ├── /reports
+│   │   │   │   ├── CustomerOrdersReport.tsx // Báo cáo Đơn hàng Khách hàng (3.2)
+│   │   │   │   └── StoreInventoryReport.tsx // Báo cáo Tồn kho (3.3 - Hàm/Truy vấn khác)
+│   │   ├── /styles
+│   │   │   ├── _variables.scss
+│   │   │   └── main.scss
+│   │   └── App.tsx
+│   └── package.json

@@ -1,0 +1,233 @@
+// FE/src/styles/main.scss
+@use './_variables.scss' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: $font-family-base;
+  color: $color-text;
+  background: $color-light-gray;
+}
+
+.app-root {
+  min-height: 100vh;
+  background: $color-light-gray;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: $header-height;
+  padding: 0 24px;
+  background: $color-uniqlo-red;
+  color: $color-white;
+}
+
+.app-header__logo {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.app-header__nav {
+  display: flex;
+  gap: 16px;
+}
+
+.app-header__nav a {
+  color: $color-white;
+  text-decoration: none;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+.app-header__nav a.active {
+  text-decoration: underline;
+}
+
+.app-main {
+  max-width: $max-page-width;
+  margin: 0 auto;
+  padding: 24px 16px 48px 16px;
+}
+
+.hero-banner {
+  background: $color-white;
+  padding: 32px 24px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+  gap: 24px;
+}
+
+.hero-banner__title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.hero-banner__subtitle {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 16px;
+}
+
+.hero-banner__cta-group {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btn--primary {
+  background: $color-uniqlo-red;
+  color: $color-white;
+  border-color: $color-uniqlo-red;
+}
+
+.btn--outline {
+  background: $color-white;
+  color: $color-uniqlo-red;
+  border-color: $color-uniqlo-red;
+}
+
+.section-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 24px 0 12px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.product-card {
+  background: $color-white;
+  border: 1px solid $color-border;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.product-card__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.product-card__desc {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.card {
+  background: $color-white;
+  border: 1px solid $color-border;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.card__title {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.form-row label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 4px;
+}
+
+input,
+select,
+textarea {
+  padding: 6px 8px;
+  border-radius: 2px;
+  border: 1px solid $color-border;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  border: 1px solid $color-border;
+  padding: 8px;
+}
+
+th {
+  background: #fafafa;
+  text-align: left;
+}
+
+.paginator {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.paginator button {
+  @extend .btn;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tabs__tab {
+  @extend .btn;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.tabs__tab--active {
+  @extend .btn--primary;
+}
+
+@media (max-width: 768px) {
+  .hero-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .app-main {
+    padding: 16px 12px 32px 12px;
+  }
+}

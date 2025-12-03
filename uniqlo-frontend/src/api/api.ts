@@ -1,0 +1,147 @@
+// FE/src/api/api.ts
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api'
+});
+
+// ===== Types =====
+export interface Product {
+  id: number;
+  name: string;
+  description?: string;
+  employeeId?: number;
+  categories: string[];
+}
+
+export interface ProductDetail extends Product {
+  variants: Array<{
+    productId: number;
+    variantId: number;
+    color: string;
+    size: string;
+    price: number;
+    images: string[];
+  }>;
+}
+
+export interface ProductPayload {
+  name: string;
+  description?: string;
+  employeeId: number;
+}
+
+export interface CustomerOrderRow {
+  orderId: number;
+  orderDate: string;
+  orderStatus: string;
+  trackingCode: string | null;
+  unitName: string | null;
+  address: string;
+}
+
+export interface StoreInventoryRow {
+  storeName: string;
+  address: string;
+  skuCount: number;
+  totalItems: number;
+}
+
+export interface LowStockRow {
+  productName: string;
+  variantInfo: string;
+  qty: number;
+  note: string;
+}
+
+// ===== Product APIs =====
+
+export async function fetchProducts(params?: {
+  search?: string;
+  categoryId?: number;
+}): Promise<Product[]> {
+  const response = await api.get<Product[]>('/products', { params });
+  return response.data;
+}
+
+export async function fetchProductById(id: number): Promise<ProductDetail> {
+  const response = await api.get<ProductDetail>(`/products/${id}`);
+  return response.data;
+}
+
+export async function createProduct(payload: ProductPayload): Promise<Product> {
+  const response = await api.post<Product>('/products', {
+    productName: payload.name,
+    description: payload.description,
+    employeeId: payload.employeeId
+  });
+  return {
+    ...response.data,
+    categories: response.data.categories || []
+  };
+}
+
+export async function updateProduct(
+  id: number,
+  payload: Partial<ProductPayload>
+): Promise<Product> {
+  const response = await api.put<Product>(`/products/${id}`, {
+    productName: payload.name,
+    description: payload.description,
+    employeeId: payload.employeeId
+  });
+  return {
+    ...response.data,
+    categories: response.data.categories || []
+  };
+}
+
+export async function deleteProduct(id: number): Promise<void> {
+  await api.delete(`/products/${id}`);
+}
+
+// ===== Report APIs =====
+
+export async function fetchCustomerOrdersReport(params: {
+  customerId: number;
+  statusList: string[];
+}): Promise<CustomerOrderRow[]> {
+  const response = await api.get<CustomerOrderRow[]>(
+    '/reports/customer-orders',
+    {
+      params: {
+        customerId: params.customerId,
+        statusList: params.statusList.join(',')
+      }
+    }
+  );
+  return response.data;
+}
+
+export async function fetchStoreInventoryReport(params: {
+  minTotalItems: number;
+  storeNameKeyword?: string;
+}): Promise<StoreInventoryRow[]> {
+  const response = await api.get<StoreInventoryRow[]>(
+    '/reports/store-inventory',
+    {
+      params
+    }
+  );
+  return response.data;
+}
+
+export async function fetchStoreLowStockReport(params: {
+  storeId: number;
+  threshold?: number;
+}): Promise<LowStockRow[]> {
+  const response = await api.get<LowStockRow[]>(
+    '/reports/store-low-stock',
+    {
+      params
+    }
+  );
+  return response.data;
+}
+
+export default api;
