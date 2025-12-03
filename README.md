@@ -24,9 +24,11 @@ Trước khi chạy dự án, máy tính cần cài sẵn:
 ### Bước 1: Cấu hình Database
 1. Mở **SSMS** và đăng nhập vào SQL Server.
 2. Tạo một Database mới tên là: `UNIQLO_DB`.
-3. Mở file script tạo bảng tại: `uniqlo-backend/database/schema.sql`.
+3. Mở file script tạo bảng tại: `uniqlo-backend/database/create.sql`.
 4. Bấm **Execute (F5)** để tạo các bảng.
-5. (Tùy chọn) Mở file `uniqlo-backend/database/seed.sql` và chạy để thêm dữ liệu mẫu.
+5. Mở file script tạo trigger tại: `uniqlo-backend/database/trigger.sql` và chạy.
+6. Mở file `uniqlo-backend/database/sample_data.sql` và chạy để thêm dữ liệu mẫu.
+7. (Tùy chọn) Mở file `uniqlo-backend/database/procedure.sql` để thêm các thủ tục.
 
 > **⚠️ Lưu ý quan trọng về SQL Server:**
 > - Hãy đảm bảo **TCP/IP** đã được bật (Enable) trong *SQL Server Configuration Manager*.
