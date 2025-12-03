@@ -64,3 +64,23 @@ Backend sẽ chạy tại cổng `5000`.
    npm run dev
    ```
    *Nếu thấy thông báo `✅ Connected to SQL Server successfully!` là thành công.*
+
+### Bước 3: Cài đặt và Chạy Frontend
+Frontend sẽ chạy tại cổng `5173`.
+
+1. Mở một terminal MỚI (giữ nguyên terminal backend), di chuyển vào thư mục frontend:
+   ```bash
+   cd uniqlo-frontend
+   ```
+
+2. Cài đặt thư viện:
+   ```bash
+   npm install
+   ```
+
+3. Khởi động giao diện:
+   ```bash
+   npm run dev
+   ```
+
+4. Truy cập trình duyệt tại địa chỉ hiển thị
