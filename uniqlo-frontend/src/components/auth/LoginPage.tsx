@@ -1,6 +1,7 @@
 // FE/src/components/auth/LoginPage.tsx
 import React, { useState } from 'react';
 import { login, type UserInfo } from '../../api/api';
+import './LoginPage.scss';
 
 interface LoginPageProps {
   onLoginSuccess: (user: UserInfo) => void;
@@ -9,6 +10,7 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,53 +44,68 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    // ... (Giữ nguyên phần giao diện HTML/JSX bên dưới) ...
-    <div style={{
-      display: 'flex', justifyContent: 'center', alignItems: 'center', 
-      height: '100vh', backgroundColor: '#f5f5f5'
-    }}>
-      <div className="card" style={{ width: '400px', padding: '2rem' }}>
-         {/* ... (Code giao diện cũ giữ nguyên) ... */}
-         <h1 style={{ textAlign: 'center', color: '#e00000', marginBottom: '1.5rem' }}>UNIQLO MINI</h1>
-         <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: '#333' }}>Đăng Nhập Hệ Thống</h3>
+    <div className="login-container">
+      <div className="login-card">
+         {/* Logo Branding */}
+         <h1 className="brand-title">UNIQLO MINI</h1>
+         <p className="login-subtitle">Đăng nhập để trải nghiệm mua sắm tối giản</p>
+
+         {/* Error Notification */}
+         {error && <div className="error-msg">⚠️ {error}</div>}
+
          <form onSubmit={handleSubmit}>
-            {/* ... giữ nguyên các input ... */}
-             <div className="form-row" style={{ flexDirection: 'column', gap: 5 }}>
-                <label>Tên đăng nhập hoặc Email</label>
+              <div className="form-group">
+                <label className="form-label">Tên đăng nhập / Email</label>
                 <input 
                   type="text" 
+                  className="form-input"
                   value={username} 
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="Ví dụ: admin_sys hoặc nguyenvana"
+                  placeholder="Ví dụ: admin_sys"
                   required 
-                  style={{ padding: '10px', width: '100%' }}
+                  autoFocus
                 />
               </div>
               
-              <div className="form-row" style={{ flexDirection: 'column', gap: 5, marginTop: 15 }}>
-                <label>Mật khẩu</label>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu..."
-                  required 
-                  style={{ padding: '10px', width: '100%' }}
-                />
+              <div className="form-group">
+                <label className="form-label">Mật khẩu</label>
+                <div className="password-wrapper">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    className="form-input"
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu..."
+                    required 
+                  />
+                  {/* Nút ẩn hiện mật khẩu (SVG Icon) */}
+                  <button 
+                    type="button"
+                    className="toggle-password-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    )}
+                  </button>
+                </div>
               </div>
-
-              {error && <div style={{ color: 'red', marginTop: 10, textAlign: 'center' }}>{error}</div>}
 
               <button 
                 type="submit" 
-                className="btn btn--primary" 
-                style={{ width: '100%', marginTop: '20px', padding: '12px', fontSize: '1rem' }}
+                className="btn-login"
                 disabled={loading}
               >
                 {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
               </button>
          </form>
-         {/* ... */}
+
+         <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+            Chưa có tài khoản? <a href="#" style={{ color: '#e00000', fontWeight: 'bold', textDecoration: 'none' }}>Đăng ký ngay</a>
+         </div>
       </div>
     </div>
   );

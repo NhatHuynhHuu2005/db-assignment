@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchCart, checkout, type CartItemData } from '../../api/api';
+import '../../styles/Components.scss';
 
 // 1. Khai báo Interface nhận userId
 interface CartPageProps {
@@ -53,66 +54,70 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
   if (loading && cartItems.length === 0) return <div>Đang tải giỏ hàng...</div>;
 
   return (
-    <div className="card">
-      <h2 className="card__title">Giỏ hàng của bạn</h2>
+    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <h2 style={{ fontSize: '2rem', color: '#e00000', marginBottom: 20, textAlign: 'center' }}>
+        🛒 Giỏ hàng của bạn
+      </h2>
       
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-
-      {cartItems.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-          Giỏ hàng đang trống. Hãy quay lại mua sắm nhé!
-        </div>
-      ) : (
-        <>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Sản phẩm</th>
-                <th>Phân loại</th>
-                <th>Giá</th>
-                <th>SL</th>
-                <th>Thành tiền</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cartItems.map((item) => (
-                <tr key={item.CartID + '-' + item.ProductID + '-' + item.VariantID}>
-                  <td>
-                    <div style={{display:'flex', alignItems:'center', gap: 10}}>
-                        {item.Image && <img src={item.Image} alt="" style={{width: 40, height: 40, objectFit:'cover'}} />}
-                        {item.ProductName}
-                    </div>
-                  </td>
-                  <td>{item.Color} / {item.Size}</td>
-                  <td>{item.Price.toLocaleString()} đ</td>
-                  <td style={{ textAlign: 'center' }}>{item.Quantity}</td>
-                  <td style={{ fontWeight: 'bold' }}>
-                    {(item.Price * item.Quantity).toLocaleString()} đ
-                  </td>
+      <div className="card" style={{ borderRadius: 16, padding: 30, boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
+        {error && <div style={{ color: 'red' }}>{error}</div>}
+        {cartItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
+                <div style={{fontSize: 60, marginBottom: 20}}>🛍️</div>
+                <p>Giỏ hàng đang trống trơn.</p>
+                <p>Hãy quay lại cửa hàng để chọn vài món đồ ưng ý nhé!</p>
+            </div>
+        ) : (
+            <>
+            <table className="data-table">
+                <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th>Phân loại</th>
+                    <th>Giá</th>
+                    <th>SL</th>
+                    <th>Thành tiền</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-               <tr>
-                 <td colSpan={4} style={{textAlign:'right', fontWeight:'bold', fontSize:'1.1rem'}}>Tổng cộng:</td>
-                 <td style={{fontWeight:'bold', fontSize:'1.1rem', color:'#e00000'}}>
-                    {totalPrice.toLocaleString()} đ
-                 </td>
-               </tr>
-            </tfoot>
-          </table>
-
-          <div style={{ marginTop: '20px', textAlign: 'right' }}>
-            <button 
-              className="btn btn--primary" 
-              onClick={handleCheckout}
-              style={{ padding: '12px 24px', fontSize: '1rem' }}
-            >
-              Thanh toán ngay
-            </button>
-          </div>
-        </>
-      )}
+                </thead>
+                <tbody>
+                {cartItems.map((item) => (
+                    <tr key={item.CartID + '-' + item.ProductID}>
+                    <td>
+                        <div style={{display:'flex', alignItems:'center', gap: 15}}>
+                            {/* Placeholder ảnh nếu không có */}
+                            <div style={{width: 50, height: 50, background:'#eee', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center'}}>👕</div>
+                            <div>
+                                <div style={{fontWeight: 'bold'}}>{item.ProductName}</div>
+                                <div style={{fontSize: '0.8rem', color:'#999'}}>Mã: {item.ProductID}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span style={{background:'#f5f5f5', padding:'4px 8px', borderRadius:4, fontSize:'0.85rem'}}>{item.Color} / {item.Size}</span></td>
+                    <td>{item.Price.toLocaleString()} ₫</td>
+                    <td style={{ textAlign: 'center', fontWeight:'bold' }}>{item.Quantity}</td>
+                    <td style={{ fontWeight: 'bold', color: '#e00000' }}>
+                        {(item.Price * item.Quantity).toLocaleString()} ₫
+                    </td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+            
+            <div style={{ marginTop: 30, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 20, borderTop: '1px solid #eee', paddingTop: 20 }}>
+                <div style={{ fontSize: '1.2rem' }}>
+                    Tổng cộng: <strong style={{ color: '#e00000', fontSize: '1.5rem' }}>{totalPrice.toLocaleString()} ₫</strong>
+                </div>
+                <button 
+                    className="btn-buy" 
+                    onClick={handleCheckout}
+                    style={{ padding: '12px 40px', fontSize: '1.1rem', flex: 'none' }}
+                >
+                    Thanh toán ngay
+                </button>
+            </div>
+            </>
+        )}
+      </div>
     </div>
   );
 };

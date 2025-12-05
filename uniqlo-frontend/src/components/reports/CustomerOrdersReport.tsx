@@ -1,6 +1,7 @@
 // FE/src/components/reports/CustomerOrdersReport.tsx
 import React, { useState, useEffect } from 'react';
 import { fetchCustomerOrdersReport, updateOrderStatus, type CustomerOrderRow } from '../../api/api';
+import '../../styles/Components.scss';
 
 // Nhận role từ App
 interface Props {
@@ -24,10 +25,10 @@ export const CustomerOrdersReport: React.FC<Props> = ({ role = 'buyer', currentU
 
   const [statusList, setStatusList] = useState({
     Pending: true,
-    Processing: true,
-    Shipping: true,
+    Processing: false,
+    Shipping: false,
     Delivered: true,
-    Cancelled: true
+    Cancelled: false
   });
   const [data, setData] = useState<CustomerOrderRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,94 +76,124 @@ export const CustomerOrdersReport: React.FC<Props> = ({ role = 'buyer', currentU
   };
 
   return (
-    <div className="card">
-      <h2 className="card__title">
-        {role === 'seller' ? 'Quản lý trạng thái đơn hàng' : 'Lịch sử mua hàng'}
+    <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 50 }}>
+      {/* Tiêu đề trang */}
+      <h2 style={{ fontSize: '1.8rem', color: '#333', marginBottom: 20, fontWeight: 800 }}>
+        {role === 'seller' ? '📋 Quản lý đơn hàng' : '📦 Lịch sử mua hàng'}
       </h2>
       
-      <div style={{ marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 16 }}>
-        {/* Nếu là Seller thì hiện ô nhập, Buyer thì ẩn đi cho gọn */}
+      {/* KHU VỰC BỘ LỌC (FILTER BAR) ĐÃ LÀM LẠI */}
+      <div className="filter-bar">
         {role === 'seller' && (
-            <div className="form-row">
-            <label>
-                CustomerID (Nhập ID khách cần tra cứu)
-                <input
-                type="number"
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
+            <div style={{ marginRight: 15 }}>
+                <input 
+                    className="search-input"
+                    placeholder="Nhập ID khách hàng..." 
+                    value={customerId} 
+                    onChange={e => setCustomerId(e.target.value)}
                 />
-            </label>
             </div>
         )}
-
-        <div style={{ margin: '10px 0', display: 'flex', gap: 15, flexWrap: 'wrap' }}>
-            <span style={{fontWeight: 'bold'}}>Lọc theo trạng thái:</span>
+        
+        {/* Render các thẻ lọc (Chips) */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
             {(Object.keys(statusList) as Array<keyof typeof statusList>).map((st) => (
-            <label key={st} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input
-                type="checkbox"
-                checked={statusList[st]}
-                onChange={() => toggleStatus(st)}
-                />
-                {st}
-            </label>
+                <div 
+                    key={st} 
+                    className={`filter-chip ${statusList[st] ? 'active' : ''}`}
+                    onClick={() => toggleStatus(st)}
+                >
+                    {st}
+                </div>
             ))}
         </div>
-        <button className="btn btn--primary" onClick={handleFetch} disabled={loading}>
-          {loading ? 'Đang tải...' : 'Xem dữ liệu'}
+
+        {/* Nút Lọc dữ liệu */}
+        <button 
+            className="btn-filter" 
+            onClick={handleFetch} 
+            disabled={loading}
+        >
+            {loading ? (
+                <>Đang tải...</>
+            ) : (
+                <>
+                    {/* Icon phễu lọc */}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    Lọc kết quả
+                </>
+            )}
         </button>
       </div>
 
-      {data.length === 0 ? (
-        <div style={{color: '#666', fontStyle: 'italic'}}>Không có đơn hàng phù hợp hoặc chưa bấm Xem.</div>
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>OrderID</th>
-              {role === 'seller' && <th>Khách hàng</th>}
-              <th>Ngày đặt</th>
-              <th>Trạng thái</th>
-              <th>Mã vận đơn</th>
-              <th>Địa chỉ giao</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row) => (
-              <tr key={row.orderId}>
-                <td>{row.orderId}</td>
-                {role === 'seller' && (
-                    <td style={{fontWeight:'bold', color: '#0056b3'}}>
-                        {row.customerName || `ID: ${customerId}`}
-                    </td>
+      {/* Bảng dữ liệu */}
+      <div className="card" style={{ borderRadius: 16, padding: 0, overflow: 'hidden', border: 'none', boxShadow: '0 5px 20px rgba(0,0,0,0.05)' }}>
+          <table className="data-table" style={{ margin: 0 }}>
+              <thead>
+                <tr style={{ background: '#f8f9fa' }}>
+                  <th style={{ paddingLeft: 25 }}>Mã đơn</th>
+                  {role === 'seller' && <th>Khách hàng</th>}
+                  <th>Ngày đặt</th>
+                  <th>Trạng thái</th>
+                  <th>Vận đơn</th>
+                  <th style={{ paddingRight: 25 }}>Địa chỉ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                    <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+                            Không tìm thấy đơn hàng nào phù hợp.
+                        </td>
+                    </tr>
+                ) : (
+                    data.map((row) => (
+                    <tr key={row.orderId}>
+                        <td style={{ fontWeight: 'bold', paddingLeft: 25 }}>#{row.orderId}</td>
+                        
+                        {role === 'seller' && (
+                            <td style={{ color: '#0056b3', fontWeight: 500 }}>
+                                {row.customerName || `ID: ${customerId}`}
+                            </td>
+                        )}
+                        
+                        <td>{new Date(row.orderDate).toLocaleDateString('vi-VN')}</td>
+                        
+                        <td>
+                            {role === 'seller' ? (
+                                <select 
+                                    className={`status-select ${row.orderStatus.toLowerCase()}`}
+                                    value={row.orderStatus}
+                                    onChange={(e) => handleChangeStatus(row.orderId, e.target.value)}
+                                >
+                                    <option value="Pending">Pending</option>
+                                    <option value="Processing">Processing</option>
+                                    <option value="Shipping">Shipping</option>
+                                    <option value="Delivered">Delivered</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            ) : (
+                                <span className={`status-badge status-${row.orderStatus.toLowerCase()}`}>
+                                    {row.orderStatus}
+                                </span>
+                            )}
+                        </td>
+                        
+                        <td style={{ fontFamily: 'monospace', color: '#555' }}>
+                            {row.trackingCode || '---'}
+                        </td>
+                        
+                        <td style={{ maxWidth: 250, paddingRight: 25 }} title={row.address}>
+                            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {row.address}
+                            </div>
+                        </td>
+                    </tr>
+                    ))
                 )}
-                <td>{new Date(row.orderDate).toLocaleString('vi-VN')}</td>
-                <td>
-                    {role === 'seller' ? (
-                        <select 
-                            value={row.orderStatus}
-                            onChange={(e) => handleChangeStatus(row.orderId, e.target.value)}
-                            style={{ padding: '4px', borderRadius: '4px', borderColor: '#ddd'}}
-                        >
-                            <option value="Pending">Pending</option>
-                            <option value="Processing">Processing</option>
-                            <option value="Shipping">Shipping</option>
-                            <option value="Delivered">Delivered</option>
-                            <option value="Cancelled">Cancelled</option>
-                        </select>
-                    ) : (
-                        <span className={`status-badge status-${row.orderStatus.toLowerCase()}`}>
-                            {row.orderStatus}
-                        </span>
-                    )}
-                </td>
-                <td>{row.trackingCode || '---'}</td>
-                <td>{row.address}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+              </tbody>
+          </table>
+      </div>
     </div>
   );
 };

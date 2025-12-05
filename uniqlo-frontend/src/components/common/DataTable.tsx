@@ -24,7 +24,7 @@ function DataTableInner<T extends Record<string, any>>(
   }
 
   return (
-    <table>
+    <table className="data-table">
       <thead>
         <tr>
           {columns.map((col) => (
