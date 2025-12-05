@@ -109,16 +109,14 @@ GO
 
 -- 1.8 TempCartItem
 CREATE TABLE TempCartItem (
+    TempCartItemID INT PRIMARY KEY IDENTITY(1,1),
     TempCartID INT NOT NULL,
-    TempCartItemID INT NOT NULL,
     Quantity INT NOT NULL,
     ProductID INT NOT NULL,
-    VariantID INT NOT NULL, -- Tạm thời không FK vì Product/ProductVariant chưa tạo
+    VariantID INT NOT NULL, 
     AddedAt DATETIME DEFAULT GETDATE(),
     
-    PRIMARY KEY (TempCartID, TempCartItemID),
     FOREIGN KEY (TempCartID) REFERENCES TemporaryCart(TempCartID) ON DELETE CASCADE,
-    
     CONSTRAINT CHK_TempCartItem_Quantity CHECK (Quantity > 0)
 );
 GO
@@ -293,13 +291,12 @@ GO
 
 -- 5.2 CartItem (Thực thể yếu)
 CREATE TABLE CartItem (
+    CartItemID INT PRIMARY KEY IDENTITY(1,1), -- Sửa: Làm khóa chính tự tăng
     CartID INT NOT NULL,
-    CartItemID INT NOT NULL,
     Quantity INT NOT NULL,
     ProductID INT NOT NULL,
     VariantID INT NOT NULL,
     
-    PRIMARY KEY (CartID, CartItemID),
     FOREIGN KEY (CartID) REFERENCES Cart(CartID) ON DELETE CASCADE,
     FOREIGN KEY (ProductID, VariantID) REFERENCES ProductVariant(ProductID, VariantID),
     
@@ -337,18 +334,17 @@ GO
 
 -- 5.5 OrderItem (Chi tiết đơn hàng - Thực thể yếu)
 CREATE TABLE OrderItem (
+    OrderItemID INT PRIMARY KEY IDENTITY(1,1), -- Sửa: Làm khóa chính tự tăng
     OrderID INT NOT NULL,
-    OrderItemID INT NOT NULL,
     Quantity INT NOT NULL,
-    PriceAtPurchase DECIMAL(18,2) NOT NULL, -- Thuộc tính Snapshot
+    PriceAtPurchase DECIMAL(18,2) NOT NULL,
     ProductID INT NOT NULL,
     VariantID INT NOT NULL,
-    StoreID INT NOT NULL, -- Nơi lấy hàng
-    ShipmentID INT, -- Lô hàng giao (có thể NULL nếu chưa gán lô hàng)
+    StoreID INT NOT NULL,
+    ShipmentID INT,
     PromoID INT,
     RuleID INT,
     
-    PRIMARY KEY (OrderID, OrderItemID),
     FOREIGN KEY (OrderID) REFERENCES [Order](OrderID) ON DELETE CASCADE,
     FOREIGN KEY (ProductID, VariantID) REFERENCES ProductVariant(ProductID, VariantID),
     FOREIGN KEY (StoreID) REFERENCES Store(StoreID),

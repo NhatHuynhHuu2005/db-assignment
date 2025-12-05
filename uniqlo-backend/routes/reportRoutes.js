@@ -8,4 +8,6 @@ router.get('/customer-orders', reportController.getCustomerOrdersReport);
 router.get('/store-inventory', reportController.getStoreInventoryReport);
 router.get('/store-low-stock', reportController.getStoreLowStockReport);
 
+router.put('/orders/:orderId/status', reportController.updateOrderStatus);
+
 export default router;

@@ -7,6 +7,8 @@ import cors from 'cors';
 
 import productRoutes from './routes/productRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -28,6 +30,8 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/products', productRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/auth', authRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;

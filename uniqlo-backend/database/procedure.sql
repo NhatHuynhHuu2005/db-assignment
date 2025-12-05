@@ -100,7 +100,7 @@ GO
 
 -- 2.1. Thủ tục 1: Truy vấn từ 2 bảng trở lên (Lấy thông tin đơn hàng đang Giao/Chờ xử lý của một Khách hàng)
 CREATE PROCEDURE sp_Get_Customer_Pending_Orders
-    @CustomerID INT,
+    @CustomerID INT = NULL,
     @StatusList NVARCHAR(MAX) -- Ví dụ: 'Pending,Shipping'
 AS
 BEGIN
@@ -119,15 +119,22 @@ BEGIN
         O.Status AS OrderStatus,
         S.TrackingCode,
         SU.UnitName,
-        O.Address
+        O.Address,
+        A.UserName,
+        A.UserID
     FROM [Order] O
-    INNER JOIN Customer C ON O.CustomerID = C.UserID
-    LEFT JOIN Shipment S ON O.OrderID = S.OrderID
+    INNER JOIN Account A ON O.CustomerID = A.UserID
+    OUTER APPLY (
+        SELECT TOP 1 sh.TrackingCode, sh.UnitID 
+        FROM Shipment sh 
+        WHERE sh.OrderID = O.OrderID
+        ORDER BY sh.ShipmentID DESC
+    ) S
     LEFT JOIN ShippingUnit SU ON S.UnitID = SU.UnitID
     WHERE
-        O.CustomerID = @CustomerID
-        AND O.Status IN (SELECT TRIM(value) FROM STRING_SPLIT(@StatusList, ',')) -- Mệnh đề WHERE (sử dụng tham số)
-    ORDER BY O.OrderDate DESC; -- Mệnh đề ORDER BY
+        (@CustomerID IS NULL OR @CustomerID = 0 OR O.CustomerID = @CustomerID)
+        AND O.Status IN (SELECT TRIM(value) FROM STRING_SPLIT(@StatusList, ','))
+    ORDER BY O.OrderDate DESC;
 END;
 GO
 

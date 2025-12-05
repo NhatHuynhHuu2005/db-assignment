@@ -6,6 +6,7 @@ function mapProductListRow(row) {
   return {
     id: row.ProductID,
     name: row.ProductName,
+    price: row.Price,
     description: row.Description,
     employeeId: row.EmployeeID,
     categories: row.Categories
@@ -14,6 +15,7 @@ function mapProductListRow(row) {
   };
 }
 
+// 1. LẤY DANH SÁCH SẢN PHẨM (Đã sửa lỗi lặp & lỗi pv.Price)
 export const getProducts = async (req, res) => {
   try {
     const { search, categoryId } = req.query;
@@ -26,10 +28,13 @@ export const getProducts = async (req, res) => {
         p.ProductName,
         p.Description,
         p.EmployeeID,
+        -- SỬA Ở ĐÂY: Dùng Subquery để lấy giá, KHÔNG dùng pv.Price
+        (SELECT MIN(Price) FROM ProductVariant WHERE ProductID = p.ProductID) as Price,
         STRING_AGG(c.CategoryName, ', ') AS Categories
       FROM [Product] p
       LEFT JOIN Belongs_To bt ON p.ProductID = bt.ProductID
       LEFT JOIN Category c ON bt.CategoryID = c.CategoryID
+      -- QUAN TRỌNG: Không JOIN ProductVariant ở đây nữa để tránh lặp dòng
     `;
 
     const conditions = [];
@@ -63,6 +68,7 @@ export const getProducts = async (req, res) => {
   }
 };
 
+// 2. LẤY CHI TIẾT SẢN PHẨM
 export const getProductById = async (req, res) => {
   try {
     const productId = Number(req.params.id);
@@ -157,6 +163,7 @@ export const getProductById = async (req, res) => {
   }
 };
 
+// 3. TẠO SẢN PHẨM
 export const createProduct = async (req, res) => {
   try {
     const { productName, description, employeeId } = req.body;
@@ -175,7 +182,6 @@ export const createProduct = async (req, res) => {
       .input('Description', sql.NVarChar(sql.MAX), description || null)
       .input('EmployeeID', sql.Int, Number(employeeId));
 
-    // Gọi SP + lấy ProductID mới (dùng IDENT_CURRENT cho mục đích BTL demo)
     const result = await request.query(`
       EXEC sp_Insert_Product 
         @ProductName = @ProductName,
@@ -197,18 +203,11 @@ export const createProduct = async (req, res) => {
       });
     }
 
+    // Lấy lại thông tin để trả về
     const productResult = await pool
       .request()
       .input('ProductID', sql.Int, Number(newId))
-      .query(`
-        SELECT 
-          p.ProductID,
-          p.ProductName,
-          p.Description,
-          p.EmployeeID
-        FROM [Product] p
-        WHERE p.ProductID = @ProductID;
-      `);
+      .query(`SELECT ProductID, ProductName, Description, EmployeeID FROM [Product] WHERE ProductID = @ProductID`);
 
     const p = productResult.recordset[0];
 
@@ -220,13 +219,13 @@ export const createProduct = async (req, res) => {
     });
   } catch (err) {
     console.error('createProduct error:', err);
-    // Lỗi validation trong SP sẽ đi vào đây
     res.status(400).json({
       error: err.message || 'Failed to create product'
     });
   }
 };
 
+// 4. CẬP NHẬT SẢN PHẨM
 export const updateProduct = async (req, res) => {
   try {
     const productId = Number(req.params.id);
@@ -242,28 +241,14 @@ export const updateProduct = async (req, res) => {
       .input('ProductID', sql.Int, productId)
       .input('ProductName', sql.NVarChar(100), productName ?? null)
       .input('Description', sql.NVarChar(sql.MAX), description ?? null)
-      .input(
-        'EmployeeID',
-        sql.Int,
-        employeeId !== undefined && employeeId !== null
-          ? Number(employeeId)
-          : null
-      );
+      .input('EmployeeID', sql.Int, employeeId !== undefined ? Number(employeeId) : null);
 
     await request.execute('sp_Update_Product');
 
     const productResult = await pool
       .request()
       .input('ProductID', sql.Int, productId)
-      .query(`
-        SELECT 
-          p.ProductID,
-          p.ProductName,
-          p.Description,
-          p.EmployeeID
-        FROM [Product] p
-        WHERE p.ProductID = @ProductID;
-      `);
+      .query(`SELECT ProductID, ProductName, Description, EmployeeID FROM [Product] WHERE ProductID = @ProductID`);
 
     if (productResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Product not found after update' });
@@ -285,6 +270,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
+// 5. XÓA SẢN PHẨM
 export const deleteProduct = async (req, res) => {
   try {
     const productId = Number(req.params.id);
@@ -301,7 +287,6 @@ export const deleteProduct = async (req, res) => {
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     console.error('deleteProduct error:', err);
-    // Nếu SP throw lỗi vì product đang nằm trong OrderItem, message sẽ lên đây
     res.status(400).json({
       error: err.message || 'Failed to delete product'
     });

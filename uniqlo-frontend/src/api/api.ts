@@ -9,6 +9,7 @@ const api = axios.create({
 export interface Product {
   id: number;
   name: string;
+  price?: number;
   description?: string;
   employeeId?: number;
   categories: string[];
@@ -38,6 +39,7 @@ export interface CustomerOrderRow {
   trackingCode: string | null;
   unitName: string | null;
   address: string;
+  customerName?: string;
 }
 
 export interface StoreInventoryRow {
@@ -52,6 +54,14 @@ export interface LowStockRow {
   variantInfo: string;
   qty: number;
   note: string;
+}
+
+export interface UserInfo {
+  id: number;
+  name: string;
+  email: string;
+  dbRole: string; // 'Customer', 'Admin', 'Employee'
+  role: 'buyer' | 'seller'; // Role để FE xử lý giao diện
 }
 
 // ===== Product APIs =====
@@ -145,3 +155,40 @@ export async function fetchStoreLowStockReport(params: {
 }
 
 export default api;
+
+export interface CartItemData {
+  CartID: number;
+  ProductID: number;
+  ProductName: string;
+  VariantID: number;
+  Quantity: number;
+  Price: number;
+  Color: string;
+  Size: string;
+  Image: string | null;
+}
+
+export async function fetchCart(userId: number): Promise<CartItemData[]> {
+  const response = await api.get<CartItemData[]>('/cart', { params: { userId } });
+  return response.data;
+}
+
+// Thêm vào giỏ có UserID và Quantity
+export async function addToCart(productId: number, quantity: number, userId: number): Promise<void> {
+  await api.post('/cart/add', { productId, variantId: 1, quantity, userId });
+}
+
+// Checkout có UserID
+export async function checkout(userId: number): Promise<{ message: string; orderId: number }> {
+  const response = await api.post('/cart/checkout', { userId });
+  return response.data;
+}
+
+export async function updateOrderStatus(orderId: number, status: string): Promise<void> {
+  await api.put(`/reports/orders/${orderId}/status`, { status });
+}
+
+export async function login(username: string, password: string): Promise<UserInfo> {
+  const response = await api.post('/auth/login', { username, password });
+  return response.data.user;
+}

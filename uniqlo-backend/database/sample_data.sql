@@ -121,14 +121,14 @@ INSERT INTO ProductVariant (ProductID, VariantID, Color, Size, Price) VALUES
 (1007, 1, N'Black', N'S', 249000), (1007, 2, N'Black', N'M', 249000);
 
 -- Dữ liệu TempCartItem (ProductID/VariantID phải tồn tại)
-INSERT INTO TempCartItem (TempCartID, TempCartItemID, Quantity, ProductID, VariantID, AddedAt) VALUES
-(1, 1, 2, 1000, 1, '2025-11-20 10:35:00'),
-(1, 2, 1, 1002, 1, '2025-11-20 10:40:00'),
-(2, 1, 3, 1004, 2, '2025-11-21 14:20:00'),
-(3, 1, 1, 1005, 1, '2025-11-22 09:50:00'),
-(4, 1, 2, 1001, 3, '2025-11-22 16:25:00'),
-(5, 1, 1, 1000, 4, '2025-11-23 11:05:00'),
-(5, 2, 2, 1003, 2, '2025-11-23 11:10:00');
+INSERT INTO TempCartItem (TempCartID, Quantity, ProductID, VariantID, AddedAt) VALUES
+(1, 2, 1000, 1, '2025-11-20 10:35:00'),
+(1, 1, 1002, 1, '2025-11-20 10:40:00'),
+(2, 3, 1004, 2, '2025-11-21 14:20:00'),
+(3, 1, 1005, 1, '2025-11-22 09:50:00'),
+(4, 2, 1001, 3, '2025-11-22 16:25:00'),
+(5, 1, 1000, 4, '2025-11-23 11:05:00'),
+(5, 2, 1003, 2, '2025-11-23 11:10:00');
 
 -- Dữ liệu ProductVariant_ImageURL
 INSERT INTO ProductVariant_ImageURL(ProductID, VariantID, ImageURL) VALUES
@@ -225,11 +225,11 @@ INSERT INTO Cart (CustomerID, LastUpdated) VALUES
 (13, GETDATE()); -- Khách 13
 
 -- Dữ liệu CartItem
-INSERT INTO CartItem (CartID, CartItemID, Quantity, ProductID, VariantID) VALUES
-(1, 1, 1, 1000, 1), -- Khách 9: 1 Áo thun S White
-(1, 2, 2, 1007, 1), -- Khách 9: 2 Áo giữ nhiệt S Black
-(2, 1, 1, 1002, 1), -- Khách 10: 1 Quần Jeans 30 Blue
-(3, 1, 3, 1004, 1); -- Khách 11: 3 Đầm Floral S
+INSERT INTO CartItem (CartID, Quantity, ProductID, VariantID) VALUES
+(1, 1, 1000, 1), -- Khách 9: 1 Áo thun S White
+(1, 2, 1007, 1), -- Khách 9: 2 Áo giữ nhiệt S Black
+(2, 1, 1002, 1), -- Khách 10: 1 Quần Jeans 30 Blue
+(3, 3, 1004, 1); -- Khách 11: 3 Đầm Floral S
 
 -- Dữ liệu Order (4 đơn hàng)
 INSERT INTO [Order] (OrderID, OrderDate, CustomerID, Address, EmployeeID, Status) VALUES
@@ -246,16 +246,16 @@ INSERT INTO Shipment (ShipmentID, TrackingCode, Status, DeliveryDate, OrderID, U
 (4, 'VN00000004', N'Pending', NULL, 5004, 4); -- Order 5004
 
 -- Dữ liệu OrderItem
-INSERT INTO OrderItem (OrderID, OrderItemID, Quantity, PriceAtPurchase, ProductID, VariantID, StoreID, ShipmentID, PromoID, RuleID) VALUES
+INSERT INTO OrderItem (OrderID, Quantity, PriceAtPurchase, ProductID, VariantID, StoreID, ShipmentID, PromoID, RuleID) VALUES
 -- Order 5001 (Đã giao)
-(5001, 1, 1, 299000.00, 1000, 1, 10, 1, 2, 1), -- Áo thun S White (áp dụng KM2)
-(5001, 2, 1, 799000.00, 1001, 1, 15, 1, NULL, NULL), -- Áo khoác M Navy
+(5001, 1, 299000.00, 1000, 1, 10, 1, 2, 1), 
+(5001, 1, 799000.00, 1001, 1, 15, 1, NULL, NULL),
 -- Order 5002 (Đã giao)
-(5002, 1, 2, 249000.00, 1007, 1, 16, 2, NULL, NULL), -- Áo giữ nhiệt S Black
+(5002, 2, 249000.00, 1007, 1, 16, 2, NULL, NULL),
 -- Order 5003 (Đang giao)
-(5003, 1, 1, 999000.00, 1002, 1, 15, 3, NULL, NULL), -- Quần Jeans 30 Blue
+(5003, 1, 999000.00, 1002, 1, 15, 3, NULL, NULL),
 -- Order 5004 (Pending)
-(5004, 1, 1, 999000.00 * 0.5, 1002, 1, 10, 4, 4, 1); -- Quần Jeans 30 Blue (áp dụng Black Friday)
+(5004, 1, 999000.00 * 0.5, 1002, 1, 10, 4, 4, 1);
 
 -- Dữ liệu Review
 INSERT INTO Review (CustomerID, ProductID, Content, Rating) VALUES

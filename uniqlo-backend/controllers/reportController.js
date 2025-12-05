@@ -3,7 +3,7 @@ import { sql, getPool } from '../config/db.js';
 
 export const getCustomerOrdersReport = async (req, res) => {
   try {
-    const customerId = Number(req.query.customerId);
+    const customerId = req.query.customerId ? Number(req.query.customerId) : 0;
     const statusList = req.query.statusList; // 'Pending,Shipping'
 
     if (!customerId || !statusList) {
@@ -26,7 +26,8 @@ export const getCustomerOrdersReport = async (req, res) => {
       orderStatus: r.OrderStatus,
       trackingCode: r.TrackingCode,
       unitName: r.UnitName,
-      address: r.Address
+      address: r.Address,
+      customerName: r.UserName
     }));
 
     res.json(rows);
@@ -116,5 +117,28 @@ export const getStoreLowStockReport = async (req, res) => {
     res.status(400).json({
       error: err.message || 'Failed to fetch low stock report'
     });
+  }
+};
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body; // status mới: 'Shipping', 'Delivered', 'Cancelled'
+
+    if (!orderId || !status) {
+      return res.status(400).json({ error: 'Thiếu orderId hoặc status' });
+    }
+
+    const pool = await getPool();
+    // Cập nhật trạng thái trong bảng Order
+    await pool.request()
+      .input('OrderID', sql.Int, orderId)
+      .input('Status', sql.NVarChar(50), status)
+      .query(`UPDATE [Order] SET Status = @Status WHERE OrderID = @OrderID`);
+
+    res.json({ message: 'Cập nhật trạng thái thành công' });
+  } catch (err) {
+    console.error('updateOrderStatus error:', err);
+    res.status(500).json({ error: err.message });
   }
 };
