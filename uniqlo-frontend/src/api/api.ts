@@ -1,4 +1,3 @@
-// FE/src/api/api.ts
 import axios from 'axios';
 
 const api = axios.create({
@@ -62,6 +61,15 @@ export interface UserInfo {
   email: string;
   dbRole: string; // 'Customer', 'Admin', 'Employee'
   role: 'buyer' | 'seller'; // Role để FE xử lý giao diện
+}
+
+// ===== AUTH Types =====
+export interface RegisterPayload {
+  username: string;
+  password: string;
+  email: string;
+  phone: string;
+  dob: string; // YYYY-MM-DD
 }
 
 // ===== Product APIs =====
@@ -191,4 +199,14 @@ export async function updateOrderStatus(orderId: number, status: string): Promis
 export async function login(username: string, password: string): Promise<UserInfo> {
   const response = await api.post('/auth/login', { username, password });
   return response.data.user;
+}
+
+// ===== REGISTER API (MỚI) =====
+export async function register(payload: RegisterPayload): Promise<{ message: string }> {
+    // Gọi xuống API backend (Backend cần xử lý insert vào Account và Customer)
+    const response = await api.post('/auth/register', {
+        ...payload,
+        role: 'Customer' // Mặc định đăng ký từ web là Customer
+    });
+    return response.data;
 }

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, Navigate, Link } from 'react-router-dom';
 import './styles/main.scss';
-import './styles/Layout.scss'; // Import file SCSS mới
+import './styles/Layout.scss';
 import { ProductList } from './components/products/ProductList';
 import { CustomerOrdersReport } from './components/reports/CustomerOrdersReport';
 import { StoreInventoryReport } from './components/reports/StoreInventoryReport';
 import { CartPage } from './components/cart/CartPage';
-import { LoginPage } from './components/auth/LoginPage'; 
+import { LoginPage } from './components/auth/LoginPage';
+import { RegisterPage } from './components/auth/RegisterPage'; // Import RegisterPage
 import { type UserInfo } from './api/api';
 
-// --- COMPONENT MỚI: TRANG CHỦ KHÁCH HÀNG (Đã tút lại) ---
+// --- COMPONENT BUYER HOME ---
 const BuyerHome: React.FC = () => {
   return (
     <div className="home-container">
@@ -36,7 +37,7 @@ const BuyerHome: React.FC = () => {
   );
 };
 
-// --- COMPONENT NAVBAR (Đã tút lại) ---
+// --- COMPONENT NAVBAR ---
 const AppShell: React.FC<{ user: UserInfo, onLogout: () => void }> = ({ user, onLogout }) => {
   return (
     <div className="app-root">
@@ -80,7 +81,7 @@ const AppShell: React.FC<{ user: UserInfo, onLogout: () => void }> = ({ user, on
 
       <main className="app-main">
         <Routes>
-           {/* ... Giữ nguyên phần Routes như cũ ... */}
+           {/* --- ROUTE CHO KHÁCH HÀNG --- */}
            {user.role === 'buyer' && (
              <>
                <Route path="/homepage" element={<BuyerHome />} />
@@ -91,6 +92,7 @@ const AppShell: React.FC<{ user: UserInfo, onLogout: () => void }> = ({ user, on
              </>
            )}
 
+           {/* --- ROUTE CHO ADMIN --- */}
            {user.role === 'seller' && (
              <>
                <Route path="/products" element={<ProductList role="seller" userId={user.id} />} />
@@ -107,9 +109,8 @@ const AppShell: React.FC<{ user: UserInfo, onLogout: () => void }> = ({ user, on
   );
 };
 
-// ... Phần Main App giữ nguyên ...
+// --- MAIN APP ---
 const App: React.FC = () => {
-    // ... (Code cũ giữ nguyên) ...
     const [user, setUser] = useState<UserInfo | null>(null);
 
     useEffect(() => {
@@ -126,16 +127,19 @@ const App: React.FC = () => {
     const handleLogout = () => {
         localStorage.removeItem('uniqlo_user');
         setUser(null);
-        window.location.href = "/";
+        window.location.href = "/login"; // Logout xong về trang login
     };
-
-    if (!user) {
-        return <LoginPage onLoginSuccess={handleLogin} />;
-    }
 
     return (
         <BrowserRouter>
-        <AppShell user={user} onLogout={handleLogout} />
+            <Routes>
+                {/* PUBLIC ROUTES (Chưa đăng nhập cũng vào được) */}
+                <Route path="/login" element={ !user ? <LoginPage onLoginSuccess={handleLogin} /> : <Navigate to="/" /> } />
+                <Route path="/register" element={ !user ? <RegisterPage /> : <Navigate to="/" /> } />
+
+                {/* PROTECTED ROUTES (Phải đăng nhập) */}
+                <Route path="/*" element={ user ? <AppShell user={user} onLogout={handleLogout} /> : <Navigate to="/login" /> } />
+            </Routes>
         </BrowserRouter>
     );
 };

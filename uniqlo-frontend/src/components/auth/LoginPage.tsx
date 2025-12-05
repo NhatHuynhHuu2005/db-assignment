@@ -1,6 +1,7 @@
-// FE/src/components/auth/LoginPage.tsx
 import React, { useState } from 'react';
 import { login, type UserInfo } from '../../api/api';
+import { Link } from 'react-router-dom'; // Import Link
+import '../../styles/Components.scss';
 import './LoginPage.scss';
 
 interface LoginPageProps {
@@ -21,23 +22,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     try {
       const user = await login(username, password);
-      // Lưu vào localStorage
       localStorage.setItem('uniqlo_user', JSON.stringify(user));
-      
-      // Gọi hàm cập nhật state ở App cha
       onLoginSuccess(user);
-
-      // --- LOGIC MỚI: CHUYỂN HƯỚNG THEO ROLE ---
-      if (user.role === 'seller') {
-        // Nếu là Admin -> Vào trang quản lý sản phẩm
-        window.location.href = "/products";
-      } else {
-        // Nếu là Khách -> Vào trang chủ (homepage)
-        window.location.href = "/homepage";
-      }
-
+      
+      // Chuyển hướng đã được handle ở App.tsx
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Đăng nhập thất bại');
+      setError(err?.response?.data?.error || 'Tên đăng nhập hoặc mật khẩu không đúng');
     } finally {
       setLoading(false);
     }
@@ -46,11 +36,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   return (
     <div className="login-container">
       <div className="login-card">
-         {/* Logo Branding */}
          <h1 className="brand-title">UNIQLO MINI</h1>
          <p className="login-subtitle">Đăng nhập để trải nghiệm mua sắm tối giản</p>
 
-         {/* Error Notification */}
          {error && <div className="error-msg">⚠️ {error}</div>}
 
          <form onSubmit={handleSubmit}>
@@ -78,7 +66,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     placeholder="Nhập mật khẩu..."
                     required 
                   />
-                  {/* Nút ẩn hiện mật khẩu (SVG Icon) */}
                   <button 
                     type="button"
                     className="toggle-password-btn"
@@ -104,7 +91,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
          </form>
 
          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
-            Chưa có tài khoản? <a href="#" style={{ color: '#e00000', fontWeight: 'bold', textDecoration: 'none' }}>Đăng ký ngay</a>
+            Chưa có tài khoản? <Link to="/register" style={{ color: '#e00000', fontWeight: 'bold', textDecoration: 'none' }}>Đăng ký ngay</Link>
          </div>
       </div>
     </div>
