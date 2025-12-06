@@ -7,8 +7,7 @@ export const login = async (req, res) => {
   try {
     const pool = await getPool();
     
-    // 1. Kiểm tra username và password (đang lưu plain text trong sample_data)
-    // Lưu ý: Thực tế nên dùng bcrypt để hash password, nhưng bài này ta làm đơn giản.
+    // 1. Kiểm tra username và password
     const result = await pool.request()
       .input('UserName', sql.VarChar, username)
       .input('Password', sql.VarChar, password)
@@ -24,9 +23,7 @@ export const login = async (req, res) => {
 
     const user = result.recordset[0];
 
-    // 2. Mapping Role của DB sang Role của Frontend
-    // DB: 'Customer' -> FE: 'buyer'
-    // DB: 'Admin', 'Employee' -> FE: 'seller'
+    // 2. Mapping Role
     let feRole = 'buyer';
     if (user.Role === 'Admin' || user.Role === 'Employee') {
       feRole = 'seller';
@@ -39,7 +36,7 @@ export const login = async (req, res) => {
         name: user.UserName,
         email: user.Email,
         dbRole: user.Role,
-        role: feRole // Role dùng cho logic Frontend
+        role: feRole 
       }
     });
 
@@ -50,7 +47,7 @@ export const login = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-  // Lấy dữ liệu từ body request (chứa phone và dob)
+  // Lấy dữ liệu từ body request
   const { username, password, email, phone, dob, role } = req.body; 
 
   // Mặc định vai trò là 'Customer' nếu không được chỉ định
@@ -59,7 +56,7 @@ export const register = async (req, res) => {
   try {
     const pool = await getPool();
 
-    // 1. Kiểm tra trùng lặp (UNIQUE constraint check)
+    // 1. Kiểm tra trùng lặp
     const checkResult = await pool.request()
         .input('UserName', sql.VarChar, username)
         .input('Email', sql.VarChar, email)
@@ -71,13 +68,12 @@ export const register = async (req, res) => {
       return res.status(409).json({ error: 'Tên đăng nhập hoặc Email đã tồn tại.' });
     }
 
-    // 2. Thực hiện Transaction (đảm bảo các lệnh INSERT là nguyên tử)
+    // 2. Thực hiện Transaction
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
-      // 2a. INSERT vào bảng Account (Lớp cha)
-      // KHÔNG bao gồm 'Phone' vì nó là thuộc tính đa trị, được lưu ở bảng riêng
+      // 2a. INSERT vào bảng Account
       await transaction.request()
           .input('UserName', sql.VarChar, username)
           .input('Password', sql.VarChar, password)
@@ -90,13 +86,11 @@ export const register = async (req, res) => {
           `);
 
       // 2b. Lấy UserID vừa tạo bằng SCOPE_IDENTITY()
-      // Dùng CONVERT(INT, ...) để đảm bảo Node.js nhận về số nguyên.
       const resultScopeID = await transaction.request()
           .query('SELECT CONVERT(INT, SCOPE_IDENTITY()) AS UserIDValue');
           
       const newUserID = parseInt(resultScopeID.recordset[0].UserIDValue); 
       
-      // Kiểm tra giá trị ID (Khắc phục lỗi SCOPE_IDENTITY() không hợp lệ)
       if (isNaN(newUserID) || newUserID === 0) {
           throw new Error('Lỗi truy vấn ID: Lệnh INSERT Account bị từ chối.'); 
       }
@@ -110,11 +104,8 @@ export const register = async (req, res) => {
                 VALUES (@UserID);
               `);
       }
-      
-      // *LƯU Ý: Nếu Role là 'Employee' hoặc 'Admin', bạn cần thêm INSERT vào bảng Employee ở đây.*
-      // Hiện tại, ta chỉ xử lý Customer.
 
-      // 2d. INSERT số điện thoại vào bảng User_PhoneNumber (Thuộc tính đa trị)
+      // 2d. INSERT số điện thoại vào bảng User_PhoneNumber
       if (phone) { 
           await transaction.request()
               .input('UserID', sql.Int, newUserID)
@@ -128,14 +119,11 @@ export const register = async (req, res) => {
       // Hoàn tất Transaction
       await transaction.commit();
       
-      // Trả về thành công
       res.status(201).json({ message: 'Đăng ký thành công! Vui lòng đăng nhập.' });
 
     } catch (transactionError) {
-      // Nếu có lỗi, rollback (hủy bỏ) các thay đổi
       await transaction.rollback();
       
-      // In ra lỗi chi tiết hơn nếu có thể
       let errorMessage = transactionError.message;
       if (transactionError.originalError && transactionError.originalError.info) {
           errorMessage = transactionError.originalError.info.message;

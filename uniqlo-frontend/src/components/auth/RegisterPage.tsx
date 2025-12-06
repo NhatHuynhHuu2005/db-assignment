@@ -74,6 +74,11 @@ export const RegisterPage: React.FC = () => {
       });
       
       alert('Đăng ký thành công! Vui lòng đăng nhập.');
+
+      localStorage.removeItem('token'); 
+      localStorage.removeItem('user'); 
+      localStorage.removeItem('accessToken');
+      
       navigate('/login');
     } catch (err: any) {
       console.error(err);

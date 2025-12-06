@@ -546,3 +546,102 @@ $radius-btn: 8px;
     }
   }
 }
+
+/* --- 9. MODAL & FORM --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5); // Nền tối mờ
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px; // Bo góc nhẹ như hình
+  width: 500px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: slideDown 0.3s ease-out;
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.25rem;
+    color: #333;
+    font-weight: 700;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #444;
+      font-size: 0.95rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd; // Viền xám nhạt
+      border-radius: 4px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+
+      &:focus {
+        border-color: #e00000; // Focus màu đỏ Uniqlo
+      }
+    }
+    
+    // Layout 2 cột cho form gọn
+    &.half {
+      display: inline-block;
+      width: 48%;
+      margin-right: 4%;
+      
+      &:last-child { margin-right: 0; }
+    }
+  }
+
+  .modal-actions {
+    margin-top: 25px;
+    display: flex;
+    gap: 15px;
+
+    button {
+      padding: 10px 30px;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      border: none;
+      
+      // Nút Lưu (Đỏ đặc)
+      &.btn-save {
+        background: #e00000;
+        color: white;
+        &:hover { background: #b30000; }
+      }
+
+      // Nút Hủy (Trắng viền đỏ)
+      &.btn-cancel {
+        background: white;
+        color: #e00000;
+        border: 1px solid #e00000;
+        &:hover { background: #fff5f5; }
+      }
+    }
+  }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

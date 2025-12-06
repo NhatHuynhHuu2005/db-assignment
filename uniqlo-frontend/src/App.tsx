@@ -9,6 +9,7 @@ import { CartPage } from './components/cart/CartPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage'; // Import RegisterPage
 import { type UserInfo } from './api/api';
+import { EmployeeManager } from './components/admin/EmployeeManager';
 
 // --- COMPONENT BUYER HOME ---
 const BuyerHome: React.FC = () => {
@@ -64,6 +65,11 @@ const AppShell: React.FC<{ user: UserInfo, onLogout: () => void }> = ({ user, on
                 <NavLink to="/reports/store-inventory" className={({isActive}) => isActive ? "active" : ""}>QL Tồn kho</NavLink>
               </>
             )}
+            {user.role === 'seller' && user.dbRole === 'Admin' && (
+              <NavLink to="/admin/employees" className={({isActive}) => isActive ? "active" : ""}>
+                ★ Quản lý Nhân Sự
+              </NavLink>
+            )}
           </nav>
         </div>
 
@@ -81,28 +87,29 @@ const AppShell: React.FC<{ user: UserInfo, onLogout: () => void }> = ({ user, on
 
       <main className="app-main">
         <Routes>
-           {/* --- ROUTE CHO KHÁCH HÀNG --- */}
-           {user.role === 'buyer' && (
-             <>
-               <Route path="/homepage" element={<BuyerHome />} />
-               <Route path="/shop" element={<ProductList role="buyer" userId={user.id} />} />
-               <Route path="/cart" element={<CartPage userId={user.id} />} />
-               <Route path="/my-orders" element={<CustomerOrdersReport role="buyer" currentUserId={user.id} />} />
-               <Route path="/" element={<Navigate to="/homepage" />} />
-             </>
-           )}
+          {/* --- ROUTE CHO KHÁCH HÀNG --- */}
+          {user.role === 'buyer' && (
+            <>
+              <Route path="/homepage" element={<BuyerHome />} />
+              <Route path="/shop" element={<ProductList role="buyer" userId={user.id} />} />
+              <Route path="/cart" element={<CartPage userId={user.id} />} />
+              <Route path="/my-orders" element={<CustomerOrdersReport role="buyer" currentUserId={user.id} />} />
+              <Route path="/" element={<Navigate to="/homepage" />} />
+            </>
+          )}
 
            {/* --- ROUTE CHO ADMIN --- */}
-           {user.role === 'seller' && (
-             <>
-               <Route path="/products" element={<ProductList role="seller" userId={user.id} />} />
-               <Route path="/reports/customer-orders" element={<CustomerOrdersReport role="seller" />} />
-               <Route path="/reports/store-inventory" element={<StoreInventoryReport />} />
-               <Route path="/" element={<Navigate to="/products" />} />
-             </>
-           )}
-           
-           <Route path="*" element={<Navigate to="/" />} />
+          {user.role === 'seller' && (
+            <>
+              <Route path="/products" element={<ProductList role="seller" userId={user.id} />} />
+              <Route path="/reports/customer-orders" element={<CustomerOrdersReport role="seller" />} />
+              <Route path="/reports/store-inventory" element={<StoreInventoryReport />} />
+              <Route path="/admin/employees" element={<EmployeeManager />} />
+              <Route path="/" element={<Navigate to="/products" />} />
+            </>
+          )}
+          
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
     </div>
