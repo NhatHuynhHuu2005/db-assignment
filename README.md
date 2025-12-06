@@ -96,4 +96,4 @@ Frontend sẽ chạy tại cổng `5173`.
 ![Một số sản phẩm nổi bật](./uniqlo-frontend/public/screenshot/shop.png)
 
 ### 3. Giỏ hàng & Thanh toán
-![Giỏ hàng](../uniqlo-frontend/public/screenshot/cart.png)
+![Giỏ hàng](./uniqlo-frontend/public/screenshot/cart.png)
