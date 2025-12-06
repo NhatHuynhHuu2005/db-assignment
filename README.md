@@ -86,3 +86,14 @@ Frontend sẽ chạy tại cổng `5173`.
    ```
 
 4. Truy cập trình duyệt tại địa chỉ hiển thị
+
+## 📸 Snapshots
+
+### 1. Giao diện Trang chủ
+![Trang chủ Uniqlo Mini](./uniqlo-frontend/public/screenshot/homepage.png)
+
+### 2. Sản phẩm nổi bật của cửa hàng
+![Một số sản phẩm nổi bật](./uniqlo-frontend/public/screenshot/shop.png)
+
+### 3. Giỏ hàng & Thanh toán
+![Giỏ hàng](../uniqlo-frontend/public/screenshot/cart.png)

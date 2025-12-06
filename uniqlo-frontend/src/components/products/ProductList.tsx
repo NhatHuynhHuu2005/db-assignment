@@ -15,6 +15,7 @@ import { DataTable, type Column } from '../common/DataTable.js';
 import { Paginator } from '../common/Paginator.js';
 import { ProductForm } from './ProductForm.js';
 import { ProductVariantModal } from './ProductVariantModal';
+import { Toast } from '../common/Toast.js';
 import '../../styles/Components.scss';
 
 // --- BẢNG ÁNH XẠ HÌNH ẢNH (Mapping) ---
@@ -78,14 +79,15 @@ const ProductCard: React.FC<{ product: Product; onOpenModal: (p: Product) => voi
             </div>
 
             {/* --- NÚT CHỨC NĂNG (Giữ logic Modal từ HEAD) --- */}
-            <button 
-                className="btn-buy" 
-                style={{ width: '100%', marginTop: 'auto', justifyContent: 'center' }}
-                onClick={() => onOpenModal(product)} 
-            >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: 8}}><path d="M9 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M20 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                Thêm vào giỏ
-            </button>
+            <div style={{ marginTop: 'auto', paddingTop: 15, display: 'flex', justifyContent: 'center' }}>
+                <button 
+                    className="btn-add-cart-mini"  // <-- Dùng class mới
+                    onClick={() => onOpenModal(product)} 
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <span>Thêm vào giỏ</span>
+                </button>
+            </div>
         </div>
     );
 };
@@ -112,6 +114,8 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
 
   const [page, setPage] = useState(1);
   const pageSize = 8; // Số sản phẩm trên 1 trang
+
+  const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -156,15 +160,16 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
           if (userId) {
               // User: Gọi API
               await addToCart(selectedProductDetail.id, variantId, qty, userId);
-              alert('Đã thêm vào giỏ hàng!');
+              //alert('Đã thêm vào giỏ hàng!');
           } else {
               // Guest: Lưu LocalStorage (Truyền đủ thông tin Màu/Size)
               addToGuestCart(selectedProductDetail, variantId, color, size, price, qty);
-              alert('Đã thêm vào giỏ tạm!');
+              //alert('Đã thêm vào giỏ tạm!');
           }
+          setToast({ msg: `Đã thêm thành công ${qty} sản phẩm!`, type: 'success' });
           setIsModalOpen(false); // Đóng modal
       } catch (e: any) {
-          alert('Lỗi: ' + e.message);
+          setToast({ msg: 'Lỗi: ' + e.message, type: 'error' });
       }
   };
 
@@ -305,6 +310,14 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
               <Paginator page={page} pageSize={pageSize} total={products.length} onChange={setPage} />
           </div>
         </>
+      )}
+
+      {toast && (
+        <Toast 
+          message={toast.msg} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
       )}
 
       {isModalOpen && selectedProductDetail && (

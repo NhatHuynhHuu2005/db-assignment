@@ -150,11 +150,21 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
                     Tổng cộng: <strong style={{ color: '#e00000', fontSize: '1.5rem' }}>{totalPrice.toLocaleString()} ₫</strong>
                 </div>
                 <button 
-                    className="btn-buy" 
+                    className="btn-checkout" 
                     onClick={handleCheckout}
-                    style={{ padding: '12px 40px', fontSize: '1.1rem', flex: 'none' }}
+                    style={{ flex: 'none' }}
                 >
-                    {userId ? 'Thanh toán ngay' : 'Đăng nhập để thanh toán'}
+                    {userId ? (
+                        <>
+                            <span>Thanh toán ngay</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </>
+                    ) : (
+                        <>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                            <span>Đăng nhập để thanh toán</span>
+                        </>
+                    )}
                 </button>
             </div>
             </>

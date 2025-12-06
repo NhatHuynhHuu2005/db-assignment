@@ -4,6 +4,13 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api'
 });
 
+export const CART_EVENT = 'cart-updated';
+
+// Helper để bắn sự kiện
+export const triggerCartUpdate = () => {
+  window.dispatchEvent(new Event(CART_EVENT));
+};
+
 // ===== Types =====
 export interface Product {
   id: number;
@@ -189,6 +196,7 @@ export async function addToCart(
   userId: number
 ): Promise<void> {
   await api.post('/cart/add', { productId, variantId, quantity, userId });
+  triggerCartUpdate();
 }
 
 // Checkout có UserID
@@ -256,10 +264,14 @@ export function addToGuestCart(
     currentCart.push(newItem);
   }
   localStorage.setItem(GUEST_CART_KEY, JSON.stringify(currentCart));
+
+  triggerCartUpdate();
 }
 
 export function clearGuestCart() {
   localStorage.removeItem(GUEST_CART_KEY);
+
+  triggerCartUpdate();
 }
 
 // Hàm đồng bộ: Đẩy giỏ hàng Local lên Server sau khi Login
@@ -274,6 +286,8 @@ export async function syncGuestCartToUser(userId: number) {
   
   // Sau khi đồng bộ xong thì xóa Local
   clearGuestCart();
+
+  triggerCartUpdate();
 }
 
 export function removeFromGuestCart(productId: number, variantId: number): void {
@@ -285,8 +299,12 @@ export function removeFromGuestCart(productId: number, variantId: number): void 
   );
   
   localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
+
+  triggerCartUpdate();
 }
 
 export async function removeFromCart(userId: number, productId: number, variantId: number): Promise<void> {
   await api.post('/cart/remove', { userId, productId, variantId });
+
+  triggerCartUpdate();
 }

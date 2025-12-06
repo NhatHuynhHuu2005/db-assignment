@@ -464,9 +464,9 @@ $radius-btn: 8px;
   }
 }
 
-/* Style lại nút Thêm mới cho đẹp hơn */
+/* Style lại nút Thêm mới */
 .btn-add-new {
-  background: linear-gradient(135deg, #111 0%, #333 100%); /* Màu đen sang trọng */
+  background: linear-gradient(135deg, #111 0%, #333 100%);
   color: white;
   padding: 10px 24px;
   border-radius: 50px;
@@ -771,3 +771,165 @@ $radius-btn: 8px;
 /* Animations */
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- NÚT THANH TOÁN (Checkout Button) --- */
+.btn-checkout {
+    /* Kích thước & Font */
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    height: 44px;
+    
+    /* Màu sắc & Gradient */
+    background: linear-gradient(135deg, #1f1f1f 0%, #130909 100%);
+    color: white;
+    border: none;
+    border-radius: 50px; /* Bo tròn dạng viên thuốc */
+    
+    /* Hiệu ứng & Vị trí */
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Bóng đỏ mờ */
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    /* Trạng thái Hover (Di chuột vào) */
+    &:hover {
+        transform: translateY(-2px); /* Nổi lên nhẹ */
+        box-shadow: 0 8px 25px rgba(224, 0, 0, 0.45);
+        background: linear-gradient(135deg, #ff1a1a 0%, #cc0000 100%);
+    }
+
+    /* Trạng thái Active (Bấm vào) */
+    &:active {
+        transform: translateY(1px); /* Lún xuống */
+        box-shadow: 0 2px 10px rgba(224, 0, 0, 0.3);
+    }
+
+    /* Icon bên trong nút */
+    svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.3s;
+    }
+
+    &:hover svg {
+        transform: translateX(3px); /* Icon dịch chuyển nhẹ sang phải */
+    }
+}
+
+/* --- TOAST NOTIFICATION (Thông báo nổi) --- */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px; /* Hiện ở góc phải trên */
+    z-index: 3000; /* Luôn nằm trên cùng */
+    
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    min-width: 300px;
+    
+    background: white;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    border-radius: 8px;
+    border-left: 5px solid;
+    
+    animation: slideInRight 0.3s ease, fadeOut 0.5s ease 2.5s forwards;
+
+    &.success { border-left-color: #2ecc71; .toast-icon { color: #2ecc71; } }
+    &.error { border-left-color: #e74c3c; .toast-icon { color: #e74c3c; } }
+
+    .toast-icon svg { width: 24px; height: 24px; }
+    
+    .toast-message {
+        flex: 1;
+        font-size: 15px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .toast-close {
+        background: none; border: none; font-size: 20px; color: #999; cursor: pointer;
+        &:hover { color: #333; }
+    }
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeOut {
+    to { opacity: 0; pointer-events: none; }
+}
+
+/* Badge số lượng trên giỏ hàng */
+.cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  background-color: #e00000; /* Đỏ Uniqlo */
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%; /* Hình tròn */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.btn-add-cart-mini {
+    background: #e00000;      /* Đỏ Uniqlo */
+    color: white;
+    border: none;
+    
+    /* Kích thước gọn gàng */
+    padding: 8px 20px;
+    height: 40px;
+    border-radius: 25px;      /* Bo tròn hẳn thành hình viên thuốc */
+    
+    font-size: 0.9rem;
+    font-weight: 700;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 12px rgba(224, 0, 0, 0.25); /* Bóng đỏ nhẹ */
+
+    /* Icon giỏ hàng */
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Hiệu ứng Hover: Nổi lên và bóng đậm hơn */
+    &:hover {
+        background: #cc0000;
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 8px 20px rgba(224, 0, 0, 0.35);
+    }
+
+    /* Hiệu ứng Click */
+    &:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 5px rgba(224, 0, 0, 0.2);
+    }
+}

@@ -8,7 +8,7 @@ import { StoreInventoryReport } from './components/reports/StoreInventoryReport'
 import { CartPage } from './components/cart/CartPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
-import { type UserInfo, syncGuestCartToUser, clearGuestCart } from './api/api'; //
+import { type UserInfo, syncGuestCartToUser, clearGuestCart, CART_EVENT, getGuestCart, fetchCart } from './api/api'; //
 import { EmployeeManager } from './components/admin/EmployeeManager';
 
 // --- COMPONENT BUYER HOME ---
@@ -39,6 +39,40 @@ const BuyerHome: React.FC = () => {
 // --- COMPONENT NAVBAR (AppShell) ---
 // SỬA LỖI 3: Cho phép user là null
 const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void }> = ({ user, onLogout }) => {
+  // State lưu số lượng
+  const [cartCount, setCartCount] = useState(0);
+
+  // Hàm tính toán số lượng (Logic: Cộng dồn Quantity của từng món)
+  const updateCount = async () => {
+    let count = 0;
+    if (user && user.role === 'buyer') {
+      try {
+        // Nếu là User: Gọi API lấy giỏ hàng về đếm
+        const items = await fetchCart(user.id);
+        count = items.reduce((sum, item) => sum + item.Quantity, 0);
+      } catch (e) { console.error(e); }
+    } else {
+      // Nếu là Guest: Lấy từ LocalStorage đếm
+      const items = getGuestCart();
+      count = items.reduce((sum, item) => sum + item.Quantity, 0);
+    }
+    setCartCount(count);
+  };
+
+  // useEffect để lắng nghe sự kiện
+  useEffect(() => {
+    // 1. Chạy ngay lần đầu vào trang
+    updateCount();
+
+    // 2. Lắng nghe sự kiện thay đổi giỏ hàng
+    window.addEventListener(CART_EVENT, updateCount);
+
+    // 3. Dọn dẹp khi component bị hủy
+    return () => {
+      window.removeEventListener(CART_EVENT, updateCount);
+    };
+  }, [user]); // Chạy lại khi user thay đổi (login/logout)
+
   return (
     <div className="app-root">
       <header className="app-header">
@@ -49,7 +83,12 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void }> = ({ u
             {/* Menu chung cho Khách & Buyer */}
             <NavLink to="/homepage" className={({isActive}) => isActive ? "active" : ""}>Trang chủ</NavLink> 
             <NavLink to="/shop" className={({isActive}) => isActive ? "active" : ""}>Sản phẩm</NavLink>
-            <NavLink to="/cart" className={({isActive}) => isActive ? "active" : ""}>Giỏ hàng</NavLink>
+            <NavLink to="/cart" className={({isActive}) => isActive ? "active" : ""} style={{position: 'relative'}}>
+              Giỏ hàng
+              {cartCount > 0 && (
+                <span className="cart-badge">{cartCount}</span>
+              )}
+            </NavLink>
 
             {/* Menu riêng cho User đã đăng nhập */}
             {user && user.role === 'buyer' && (
