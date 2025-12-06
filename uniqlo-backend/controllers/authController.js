@@ -12,9 +12,12 @@ export const login = async (req, res) => {
       .input('UserName', sql.VarChar, username)
       .input('Password', sql.VarChar, password)
       .query(`
-        SELECT UserID, UserName, Role, Email 
-        FROM Account 
-        WHERE (UserName = @UserName OR Email = @UserName) AND Password = @Password
+        SELECT 
+            A.UserID, A.UserName, A.Role, A.Email,
+            C.TotalSpent, C.MemberTier
+        FROM Account A
+        LEFT JOIN Customer C ON A.UserID = C.UserID
+        WHERE (A.UserName = @UserName OR A.Email = @UserName) AND A.Password = @Password
       `);
 
     if (result.recordset.length === 0) {
@@ -36,7 +39,10 @@ export const login = async (req, res) => {
         name: user.UserName,
         email: user.Email,
         dbRole: user.Role,
-        role: feRole 
+        role: feRole,
+        // --- THÊM DÒNG DƯỚI ---
+        totalSpent: user.TotalSpent || 0, 
+        memberTier: user.MemberTier || 'New Member'
       }
     });
 

@@ -106,11 +106,12 @@ export const getProductById = async (req, res) => {
         pv.Color,
         pv.Size,
         pv.Price,
-        i.ImageURL
+        i.ImageURL,
+        (SELECT ISNULL(SUM(Quantity), 0) FROM Has_Stock WHERE ProductID = pv.ProductID AND VariantID = pv.VariantID) AS StockQuantity
       FROM ProductVariant pv
       LEFT JOIN ProductVariant_ImageURL i
         ON pv.ProductID = i.ProductID 
-       AND pv.VariantID = i.VariantID
+        AND pv.VariantID = i.VariantID
       WHERE pv.ProductID = @ProductID;
     `);
 
@@ -137,6 +138,7 @@ export const getProductById = async (req, res) => {
           color: v.Color,
           size: v.Size,
           price: Number(v.Price),
+          stockQuantity: Number(v.StockQuantity),
           images: []
         });
       }

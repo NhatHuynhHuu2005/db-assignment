@@ -91,7 +91,10 @@ export const addToCart = async (req, res) => {
 
 // 3. THANH TOÁN (Checkout) - Nghiệp vụ quan trọng nhất
 export const checkout = async (req, res) => {
-  const { userId } = req.body;
+  const { userId, paymentMethod } = req.body;
+
+  const validMethods = ['Cash', 'Banking'];
+  const method = validMethods.includes(paymentMethod) ? paymentMethod : 'Cash';
   
   const pool = await getPool();
   const transaction = new sql.Transaction(pool);
@@ -114,9 +117,16 @@ export const checkout = async (req, res) => {
     await transaction.request()
       .input('OrderID', sql.Int, newOrderId)
       .input('CustomerID', sql.Int, userId)
+      .input('PaymentMethod', sql.NVarChar, method)
       .query(`
-        INSERT INTO [Order] (OrderID, OrderDate, Status, Address, CustomerID, EmployeeID)
-        VALUES (@OrderID, GETDATE(), 'Pending', N'Địa chỉ mặc định khách hàng', @CustomerID, NULL)
+        INSERT INTO [Order] (
+          OrderID, OrderDate, Status, Address, CustomerID, EmployeeID,
+          PaymentMethod, PaymentStatus
+        )
+        VALUES (
+          @OrderID, GETDATE(), 'Pending', N'Địa chỉ mặc định khách hàng', @CustomerID, NULL,
+          @PaymentMethod, 'Unpaid'
+        )
       `);
 
     // C. Chuyển dữ liệu từ CartItem -> OrderItem

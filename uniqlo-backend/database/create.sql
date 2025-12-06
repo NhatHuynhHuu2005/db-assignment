@@ -377,3 +377,13 @@ GO
 -- =====================================================
 -- 6. NHÓM HỆ THỐNG QUẢN TRỊ (Phần mở rộng từ Nhóm 2)
 -- =====================================================
+-- Thêm cột tích lũy chi tiêu và hạng thành viên
+ALTER TABLE Customer ADD TotalSpent DECIMAL(18, 2) DEFAULT 0;
+ALTER TABLE Customer ADD MemberTier VARCHAR(20) DEFAULT 'New Member'; -- Bronze, Silver, Gold, Platinum, VIP
+
+-- Thêm phương thức thanh toán cho đơn hàng
+ALTER TABLE [Order] ADD PaymentMethod NVARCHAR(50); -- 'Cash', 'Transfer'
+ALTER TABLE [Order] ADD PaymentStatus NVARCHAR(50) DEFAULT 'Unpaid';
+
+ALTER TABLE [Order] ADD ShippingFee DECIMAL(18,2) DEFAULT 0;
+ALTER TABLE [Order] ADD UnitID INT; -- Để biết khách chọn ship nào

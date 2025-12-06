@@ -172,3 +172,56 @@ BEGIN
     );
 END;
 GO
+
+CREATE TRIGGER TRG_Deduct_Stock_On_Order
+ON OrderItem
+AFTER INSERT
+AS
+BEGIN
+    -- Trừ tồn kho tại cửa hàng (Store) tương ứng
+    UPDATE HS
+    SET HS.Quantity = HS.Quantity - i.Quantity
+    FROM Has_Stock HS
+    JOIN inserted i ON HS.StoreID = i.StoreID 
+        AND HS.ProductID = i.ProductID 
+        AND HS.VariantID = i.VariantID;
+END;
+GO
+
+CREATE TRIGGER TRG_Update_Customer_Ranking
+ON [Order]
+AFTER UPDATE
+AS
+BEGIN
+    -- Chỉ xử lý khi trạng thái chuyển sang 'Delivered'
+    IF EXISTS (SELECT 1 FROM inserted i JOIN deleted d ON i.OrderID = d.OrderID 
+               WHERE i.Status = 'Delivered' AND d.Status != 'Delivered')
+    BEGIN
+        DECLARE @TotalAmt DECIMAL(18, 2);
+        DECLARE @CustID INT;
+
+        -- Tính tổng tiền đơn hàng (đơn giản hóa: lấy từ OrderItem)
+        SELECT @CustID = CustomerID FROM inserted;
+        
+        SELECT @TotalAmt = SUM(Quantity * PriceAtPurchase) 
+        FROM OrderItem WHERE OrderID = (SELECT OrderID FROM inserted);
+
+        -- Cộng dồn chi tiêu
+        UPDATE Customer
+        SET TotalSpent = TotalSpent + ISNULL(@TotalAmt, 0)
+        WHERE UserID = @CustID;
+
+        -- Cập nhật hạng thành viên (Ví dụ logic)
+        UPDATE Customer
+        SET MemberTier = CASE 
+            WHEN TotalSpent >= 50000000 THEN 'VIP'
+            WHEN TotalSpent >= 25000000 THEN 'Platinum'
+            WHEN TotalSpent >= 10000000 THEN 'Gold'
+            WHEN TotalSpent >= 5000000 THEN 'Silver'
+            WHEN TotalSpent >= 2000000 THEN 'Bronze'
+            ELSE MemberTier
+        END
+        WHERE UserID = @CustID;
+    END
+END;
+GO

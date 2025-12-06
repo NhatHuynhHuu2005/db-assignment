@@ -28,6 +28,7 @@ export interface ProductDetail extends Product {
     color: string;
     size: string;
     price: number;
+    stockQuantity: number;
     images: string[];
   }>;
 }
@@ -68,6 +69,8 @@ export interface UserInfo {
   email: string;
   dbRole: string; // 'Customer', 'Admin', 'Employee'
   role: 'buyer' | 'seller'; // Role để FE xử lý giao diện
+  totalSpent?: number;
+  memberTier?: string;
 }
 
 // ===== AUTH Types =====
@@ -200,8 +203,8 @@ export async function addToCart(
 }
 
 // Checkout có UserID
-export async function checkout(userId: number): Promise<{ message: string; orderId: number }> {
-  const response = await api.post('/cart/checkout', { userId });
+export async function checkout(userId: number, paymentMethod: string = 'Cash'): Promise<{ message: string; orderId: number }> {
+  const response = await api.post('/cart/checkout', { userId, paymentMethod });
   return response.data;
 }
 
