@@ -14,19 +14,21 @@ import '../../styles/Components.scss';
 
 // 1. CẤU HÌNH QUYỀN LỢI THÀNH VIÊN
 const TIER_BENEFITS: Record<string, { rate: number; label: string; color: string }> = {
-    'VIP':        { rate: 0.10, label: 'VIP (Giảm 10%)',      color: '#000000' },
-    'Platinum':   { rate: 0.07, label: 'Platinum (Giảm 7%)', color: '#7f8c8d' },
-    'Gold':       { rate: 0.05, label: 'Gold (Giảm 5%)',     color: '#f1c40f' },
-    'Silver':     { rate: 0.03, label: 'Silver (Giảm 3%)',   color: '#bdc3c7' },
-    'Bronze':     { rate: 0.01, label: 'Bronze (Giảm 1%)',   color: '#cd7f32' },
-    'New Member': { rate: 0.00, label: 'Thành viên mới',     color: '#2c3e50' }
+    'VIP':        { rate: 0.10, label: 'VIP (Giảm 10%)',      color: '#2d3436' }, // Đen
+    'Platinum':   { rate: 0.07, label: 'Platinum (Giảm 7%)', color: '#7f8c8d' }, // Xám đậm hơn chút để rõ chữ
+    'Gold':       { rate: 0.05, label: 'Gold (Giảm 5%)',     color: '#f39c12' }, // Vàng cam đậm để dễ đọc trên nền trắng
+    'Silver':     { rate: 0.03, label: 'Silver (Giảm 3%)',   color: '#7f8c8d' }, // Xám bạc
+    'Bronze':     { rate: 0.01, label: 'Bronze (Giảm 1%)',   color: '#d35400' }, // Đồng
+    'New Member': { rate: 0.00, label: 'Thành viên mới',     color: '#0984e3' }  // Xanh biển
 };
 
 interface CartPageProps {
   userId?: number; 
+  onPurchaseSuccess?: () => void;
+  userTier?: string;
 }
 
-export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
+export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, userTier = 'New Member' }) => {
   const [cartItems, setCartItems] = useState<CartItemData[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -47,21 +49,10 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
   const [shipUnitId, setShipUnitId] = useState(1);
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
-  
-  // State hạng thành viên
-  const [userTier, setUserTier] = useState<string>('New Member');
 
   const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
 
   // Giả lập lấy hạng thành viên
-  useEffect(() => {
-      if (userId) {
-          // Logic giả định, thực tế lấy từ API User Info
-          setUserTier('Gold'); 
-      } else {
-          setUserTier('New Member');
-      }
-  }, [userId]);
 
   const loadCart = async () => {
     setLoading(true);
@@ -161,6 +152,10 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
                 await loadCart();
                 setDiscount(0);
                 setPromoCode('');
+
+                if (onPurchaseSuccess) {
+                    onPurchaseSuccess(); 
+                }
             } catch (err: any) {
                 // Xử lý lỗi trả về từ axios
                 const errorMsg = err?.response?.data?.error || err.message;
@@ -339,9 +334,14 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
                             </div>
                         )}
                         {memberDiscountAmount > 0 && (
-                             <div style={{display:'flex', justifyContent:'space-between', marginBottom: 10, color: tierInfo.color}}>
-                                <span>Ưu đãi {userTier}:</span>
-                                <span>- {memberDiscountAmount.toLocaleString()} ₫</span>
+                            <div style={{display:'flex', justifyContent:'space-between', marginBottom: 10}}>
+                                {/* Đổi label thành màu xám đậm #666 giống dòng Tạm tính */}
+                                <span style={{color:'#666'}}>Ưu đãi hạng Thành viên:</span>
+                                
+                                {/* Số tiền để màu đen đậm (mặc định) cho dễ đọc */}
+                                <span style={{fontWeight:600}}>
+                                    - {memberDiscountAmount.toLocaleString()} ₫
+                                </span>
                             </div>
                         )}
 

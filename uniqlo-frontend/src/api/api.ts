@@ -311,3 +311,8 @@ export async function removeFromCart(userId: number, productId: number, variantI
 
   triggerCartUpdate();
 }
+
+export async function fetchUserProfile(userId: number): Promise<UserInfo> {
+  const response = await api.get('/auth/profile', { params: { userId } });
+  return response.data;
+}

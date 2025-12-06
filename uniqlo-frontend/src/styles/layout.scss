@@ -1,4 +1,4 @@
-// styles/Layout.scss
+// styles/layout.scss
 
 $primary-color: #e00000;
 $primary-dark: #b30000;
@@ -31,7 +31,6 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
     font-weight: 900;
     color: $primary-color;
     letter-spacing: -1px;
-    // Hiệu ứng gradient text cho logo
     background: linear-gradient(45deg, $primary-color, #ff4d4d);
     -webkit-background-clip: text;
     background-clip: text;
@@ -92,7 +91,7 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
 // --- 2. HOME PAGE (Buyer Home) ---
 .home-container {
   padding: 40px 20px;
-  background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%); // Nền chuyển màu nhẹ
+  background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%);
   min-height: calc(100vh - 70px);
 
   .welcome-card {
@@ -130,7 +129,7 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
       transition: transform 0.5s ease;
 
       &:hover {
-        transform: scale(1.02); // Zoom nhẹ khi hover ảnh
+        transform: scale(1.02);
       }
     }
 
@@ -140,7 +139,7 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
       background: linear-gradient(135deg, $primary-color 0%, $primary-dark 100%);
       color: white;
       text-decoration: none;
-      border-radius: 50px; // Nút tròn hình viên thuốc
+      border-radius: 50px;
       font-size: 1.1rem;
       font-weight: 700;
       box-shadow: 0 10px 20px rgba(224, 0, 0, 0.3);
@@ -154,37 +153,43 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
   }
 }
 
-/* --- MEMBER RANK BADGE --- */
+/* --- 3. MEMBER RANK BADGE --- */
 .rank-badge-container {
   position: relative;
   cursor: pointer;
-  margin-right: 20px; /* Tách biệt với tên user */
+  margin-right: 20px;
   font-family: 'Segoe UI', sans-serif;
   z-index: 1100;
 
-  /* 1. Huy hiệu trên Menu (Dạng viên thuốc tối giản) */
+  /* 1. Huy hiệu trên Menu (CÁI KHUNG MÀU SẮC) */
   .rank-label {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 16px 6px 6px;
-    background: #2d3436; /* Nền tối sang trọng */
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 5px 16px 5px 5px;
+    
+    /* === THAY ĐỔI LỚN Ở ĐÂY: Nền ăn theo màu Rank === */
+    background: var(--rank-color); 
+    /* Thêm gradient nhẹ để tạo khối kim loại 3D */
+    background: linear-gradient(135deg, var(--rank-color) 0%, rgba(0,0,0,0.2) 100%);
+    
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Viền trắng mờ */
     border-radius: 30px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 15px var(--rank-shadow); /* Phát sáng theo màu rank */
 
+    /* Vòng tròn chứa Icon */
     .icon-box {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #2d3436 0%, #000000 100%);
+      width: 34px;
+      height: 34px;
+      background: rgba(0, 0, 0, 0.2); /* Nền tối mờ để nổi icon lên trên nền màu */
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-      border: 2px solid var(--rank-color); /* Viền màu theo hạng */
-      box-shadow: 0 0 10px var(--rank-shadow);
+      font-size: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
     }
 
     .info-box {
@@ -193,45 +198,49 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
       justify-content: center;
 
       .rank-title {
-        font-size: 10px;
-        color: #b2bec3;
+        font-size: 9px;
+        color: rgba(255, 255, 255, 0.8); /* Chữ nhỏ màu trắng mờ */
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
+        font-weight: 600;
       }
 
       .rank-name {
         font-size: 13px;
         font-weight: 800;
-        background: linear-gradient(90deg, #fff, #dfe6e9);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #fff; /* Chữ tên hạng luôn là màu TRẮNG */
         text-transform: uppercase;
+        /* Đổ bóng chữ để đọc được trên nền sáng (như Vàng/Bạc) */
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3); 
       }
     }
 
     &:hover {
-      transform: translateY(-2px);
-      background: #000;
-      border-color: var(--rank-color);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      transform: translateY(-2px) scale(1.05);
+      filter: brightness(1.1); /* Sáng lên khi hover */
+      box-shadow: 0 8px 25px var(--rank-shadow);
     }
   }
 
-  /* 2. Popover (Bảng chi tiết EXP - Phong cách Game/Cyberpunk) */
+  /* 2. Popover (Giữ nguyên hoặc chỉnh header theo màu) */
   .rank-popover {
     position: absolute;
     top: 150%;
-    right: -40px; /* Căn chỉnh lại để không bị lệch */
+    right: -40px;
     width: 340px;
-    background: #1e1e2e; /* Màu nền tím than đậm */
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #1e1e2e;
+    //border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     overflow: hidden;
-    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    outline: none;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+    &.closing {
+      animation: popOut 0.2s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+      pointer-events: none; /* Ngăn người dùng click khi đang đóng */
+    }
     
-    /* Mũi tên trỏ lên */
     &::before {
       content: '';
       position: absolute;
@@ -240,27 +249,27 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
       width: 12px; height: 12px;
       background: #1e1e2e;
       transform: rotate(45deg);
-      border-left: 1px solid rgba(255,255,255,0.1);
-      border-top: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* Header chứa thông tin hạng */
+    /* Header của Popover cũng đổi màu theo Rank cho đồng bộ */
     .popover-header {
       padding: 24px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+      /* Gradient từ màu Rank mờ xuống trong suốt */
+      background: linear-gradient(180deg, var(--rank-color) 0%, rgba(30,30,46,0) 100%);
       display: flex;
       align-items: center;
       gap: 16px;
+      opacity: 0.9;
 
       .tier-icon-large {
         font-size: 40px;
-        filter: drop-shadow(0 0 15px var(--rank-color));
+        filter: drop-shadow(0 0 15px rgba(0,0,0,0.5));
         animation: float 3s ease-in-out infinite;
       }
 
       .tier-details {
         flex: 1;
-        .label { font-size: 11px; color: #a6a6a6; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .label { font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
         .value { 
           font-size: 20px; 
           font-weight: 900; 
@@ -271,7 +280,7 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
       }
     }
 
-    /* Phần Thanh Kinh Nghiệm (EXP Bar) */
+    /* ... (Phần xp-section giữ nguyên như cũ) ... */
     .xp-section {
       padding: 0 24px 24px 24px;
 
@@ -282,7 +291,6 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
         font-size: 12px;
         font-weight: 600;
         color: #b2bec3;
-        
         .current { color: #fff; }
       }
 
@@ -290,19 +298,17 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
         height: 14px;
         background: rgba(0, 0, 0, 0.4);
         border-radius: 10px;
-        padding: 2px; /* Tạo viền bao quanh thanh */
+        padding: 2px;
         border: 1px solid rgba(255,255,255,0.05);
 
         .xp-fill {
           height: 100%;
           border-radius: 8px;
-          /* Gradient Tím Hồng */
-          background: linear-gradient(90deg, #8e44ad, #ff7675);
+          background: var(--rank-color); /* Thanh EXP cùng màu Rank */
+          box-shadow: 0 0 10px var(--rank-shadow);
           position: relative;
-          box-shadow: 0 0 10px rgba(142, 68, 173, 0.6);
           transition: width 0.8s ease-out;
 
-          /* Hiệu ứng lấp lánh chạy qua */
           &::after {
             content: '';
             position: absolute;
@@ -322,8 +328,6 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
         background: rgba(255,255,255,0.05);
         padding: 8px;
         border-radius: 8px;
-
-        strong { color: #ff7675; }
       }
     }
   }
@@ -342,4 +346,17 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
 @keyframes shine {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
+}
+
+@keyframes popOut {
+  from { 
+    opacity: 1; 
+    transform: translateY(0) scale(1);
+    // filter: blur(0px); // Có thể thêm blur nhẹ cho mượt
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(10px) scale(0.95); // Thu nhỏ và tụt xuống
+    // filter: blur(5px);
+  }
 }

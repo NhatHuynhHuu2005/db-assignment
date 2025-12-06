@@ -150,6 +150,41 @@ export const checkout = async (req, res) => {
         JOIN ProductVariant pv ON ci.ProductID = pv.ProductID AND ci.VariantID = pv.VariantID
         WHERE ci.CartID = @CartID
       `);
+    const totalResult = await transaction.request()
+        .input('OrderID', sql.Int, newOrderId)
+        .query(`
+            SELECT SUM(Quantity * PriceAtPurchase) as OrderTotal 
+            FROM OrderItem 
+            WHERE OrderID = @OrderID
+        `);
+
+    const orderTotal = totalResult.recordset[0].OrderTotal || 0;
+
+    if (orderTotal > 0) {
+        await transaction.request()
+            .input('CustomerID', sql.Int, userId)
+            .input('NewAmount', sql.Decimal(18, 0), orderTotal)
+            .query(`
+                UPDATE Customer 
+                SET TotalSpent = ISNULL(TotalSpent, 0) + @NewAmount
+                WHERE UserID = @CustomerID
+            `);
+
+        await transaction.request()
+            .input('CustomerID_Tier', sql.Int, userId)
+            .query(`
+                UPDATE Customer
+                SET MemberTier = CASE 
+                    WHEN TotalSpent >= 50000000 THEN 'VIP'
+                    WHEN TotalSpent >= 25000000 THEN 'Platinum'
+                    WHEN TotalSpent >= 10000000 THEN 'Gold'
+                    WHEN TotalSpent >= 5000000  THEN 'Silver'
+                    WHEN TotalSpent >= 2000000  THEN 'Bronze'
+                    ELSE 'New Member'
+                END
+                WHERE UserID = @CustomerID_Tier
+            `);
+    }
 
     // D. Làm sạch giỏ hàng (Xóa CartItem)
     await transaction.request()

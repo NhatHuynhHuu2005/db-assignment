@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, Navigate, Link } from 'react-router-dom';
 import './styles/main.scss';
 import './styles/layout.scss';
@@ -8,7 +8,7 @@ import { StoreInventoryReport } from './components/reports/StoreInventoryReport'
 import { CartPage } from './components/cart/CartPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
-import { type UserInfo, syncGuestCartToUser, clearGuestCart, CART_EVENT, getGuestCart, fetchCart } from './api/api'; //
+import { type UserInfo, syncGuestCartToUser, clearGuestCart, CART_EVENT, getGuestCart, fetchCart, fetchUserProfile } from './api/api'; //
 import { EmployeeManager } from './components/admin/EmployeeManager';
 
 // --- COMPONENT BUYER HOME ---
@@ -40,15 +40,29 @@ const BuyerHome: React.FC = () => {
 const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
+  const [isClosing, setIsClosing] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
   // Cấu hình màu sắc (dùng biến CSS variable cho linh hoạt)
   const TIERS = [
-    { name: 'New Member', threshold: 0,        color: '#b2bec3', shadow: 'rgba(178, 190, 195, 0.5)' },
-    { name: 'Bronze',     threshold: 2000000,  color: '#cd7f32', shadow: 'rgba(205, 127, 50, 0.6)' },
-    { name: 'Silver',     threshold: 5000000, color: '#bdc3c7', shadow: 'rgba(189, 195, 199, 0.6)' },
-    { name: 'Gold',       threshold: 10000000, color: '#f1c40f', shadow: 'rgba(241, 196, 15, 0.6)' },
-    { name: 'Platinum',   threshold: 25000000, color: '#0984e3', shadow: 'rgba(9, 132, 227, 0.6)' },
-    { name: 'VIP',        threshold: 50000000,color: '#e84393', shadow: 'rgba(232, 67, 147, 0.8)' }
-  ];
+  // 1. New Member: Xanh biển tươi (Fresh Blue)
+  { name: 'New Member', threshold: 0,        color: '#0984e3', shadow: 'rgba(9, 132, 227, 0.5)' },
+  
+  // 2. Bronze: Màu Đồng đất nung (Burnt Orange/Bronze) - Nhìn đậm đà
+  { name: 'Bronze',     threshold: 2000000,  color: '#d35400', shadow: 'rgba(211, 84, 0, 0.6)' },
+  
+  // 3. Silver: Màu Bạc ánh kim (Metallic Silver)
+  { name: 'Silver',     threshold: 5000000,  color: '#95a5a6', shadow: 'rgba(149, 165, 166, 0.6)' },
+  
+  // 4. Gold: Màu Vàng Hoàng Kim (Vivid Gold)
+  { name: 'Gold',       threshold: 10000000, color: '#f1c40f', shadow: 'rgba(241, 196, 15, 0.6)' },
+  
+  // 5. Platinum: Màu Bạch kim sáng (Lighter Gray/Platinum)
+  { name: 'Platinum',   threshold: 25000000, color: '#dfe6e9', shadow: 'rgba(223, 230, 233, 0.6)' },
+  
+  // 6. VIP: Màu Đen quyền lực (Luxury Black)
+  { name: 'VIP',        threshold: 50000000, color: '#2d3436', shadow: 'rgba(0, 0, 0, 0.8)' }
+];
 
   const currentSpent = user.totalSpent || 0;
   // Tìm hạng hiện tại
@@ -70,12 +84,45 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
     '--rank-shadow': currentTier.shadow
   } as React.CSSProperties;
 
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Ngăn sự kiện click nổi bọt
+    
+    if (showTooltip && !isClosing) {
+        setIsClosing(true); // Kích hoạt animation .closing trong SCSS
+        
+        // Xóa timeout cũ nếu có để tránh lỗi
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        
+        // Chờ 200ms (bằng thời gian animation popOut) rồi mới ẩn thật
+        timeoutRef.current = setTimeout(() => {
+            setShowTooltip(false);
+            setIsClosing(false); // Reset trạng thái
+            timeoutRef.current = null;
+        }, 200); 
+    }
+  };
+
+  // Hàm xử lý Bật/Tắt khi click vào Badge
+  const handleToggle = () => {
+      if (showTooltip) {
+          handleClose();
+      } else {
+          setShowTooltip(true);
+      }
+  };
+
+  // Cleanup timeout khi component bị hủy để tránh memory leak
+  useEffect(() => {
+      return () => {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
+  }, []);
+
   return (
     <div 
       className="rank-badge-container" 
       style={dynamicStyle}
-      onClick={() => setShowTooltip(!showTooltip)}
-      onMouseLeave={() => setShowTooltip(false)}
+      onClick={handleToggle}
     >
       {/* 1. COMPACT BADGE (HIỂN THỊ TRÊN NAVBAR) - Đơn giản hóa */}
       <div className="rank-label">
@@ -90,8 +137,8 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
       </div>
 
       {/* 2. EXP POPOVER (CHI TIẾT) */}
-      {showTooltip && (
-        <div className="rank-popover">
+      {(showTooltip || isClosing) && (
+        <div className={`rank-popover ${isClosing ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
           <div className="popover-header">
             <div className="tier-icon-large">
               {currentTier.name === 'VIP' || currentTier.name === 'Platinum' ? '💎' : '👑'}
@@ -121,6 +168,20 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
               )}
             </div>
           </div>
+
+          <div 
+            onClick={handleClose}
+            style={{
+              position: 'absolute', top: 10, right: 10, 
+              color: 'rgba(255,255,255,0.6)', cursor: 'pointer', zIndex: 10,
+              width: 24, height: 24, textAlign:'center', lineHeight:'24px',
+              fontSize: '18px', transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+           >
+            ×
+          </div>
         </div>
       )}
     </div>
@@ -129,7 +190,7 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
 
 // --- COMPONENT NAVBAR (AppShell) ---
 // SỬA LỖI 3: Cho phép user là null
-const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void }> = ({ user, onLogout }) => {
+const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefreshUser: () => void }> = ({ user, onLogout, onRefreshUser }) => {
   // State lưu số lượng
   const [cartCount, setCartCount] = useState(0);
 
@@ -243,7 +304,7 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void }> = ({ u
           {/* --- ROUTE CHO KHÁCH & BUYER --- */}
           <Route path="/homepage" element={<BuyerHome />} />
           <Route path="/shop" element={<ProductList role="buyer" userId={user?.id} />} />
-          <Route path="/cart" element={<CartPage userId={user?.id} />} />
+          <Route path="/cart" element={<CartPage userId={user?.id} onPurchaseSuccess={onRefreshUser} userTier={user?.memberTier} />} />
           
           {/* Chỉ User mới vào được trang My Orders */}
           {user && user.role === 'buyer' && (
@@ -297,6 +358,20 @@ const App: React.FC = () => {
         window.location.href = "/homepage"; 
     };
 
+    const handleRefreshUser = async () => {
+        if (user) {
+            try {
+                // Gọi API lấy thông tin mới nhất (tiền, rank)
+                const updatedUser = await fetchUserProfile(user.id);
+                setUser(updatedUser);
+                // Cập nhật luôn vào localStorage để F5 không bị mất
+                localStorage.setItem('uniqlo_user', JSON.stringify(updatedUser)); 
+            } catch (e) {
+                console.error("Lỗi cập nhật user:", e);
+            }
+        }
+    };
+
     return (
         <BrowserRouter>
             <Routes>
@@ -304,7 +379,7 @@ const App: React.FC = () => {
                 <Route path="/register" element={ !user ? <RegisterPage /> : <Navigate to="/" /> } />
                 
                 {/* Luôn render AppShell để khách cũng thấy Header */}
-                <Route path="/*" element={ <AppShell user={user} onLogout={handleLogout} /> } />
+                <Route path="/*" element={ <AppShell user={user} onLogout={handleLogout} onRefreshUser={handleRefreshUser} /> } />
             </Routes>
         </BrowserRouter>
     );
