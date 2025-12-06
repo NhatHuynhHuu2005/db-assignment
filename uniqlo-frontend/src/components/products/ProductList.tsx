@@ -2,63 +2,50 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   fetchProducts,
+  fetchProductById,
   createProduct,
   updateProduct,
   deleteProduct,
   type Product,
-  addToCart
+  addToCart,
+  addToGuestCart,
+  type ProductDetail
 } from '../../api/api';
 import { DataTable, type Column } from '../common/DataTable.js';
 import { Paginator } from '../common/Paginator.js';
 import { ProductForm } from './ProductForm.js';
+import { ProductVariantModal } from './ProductVariantModal';
 import '../../styles/Components.scss';
 
 // --- 1. COMPONENT CON: THẺ SẢN PHẨM (Dùng cho Khách Hàng) ---
 // Giúp mỗi sản phẩm có một ô nhập số lượng riêng
-const ProductCard: React.FC<{ product: Product; userId: number; }> = ({ product, userId }) => {
-    const [qty, setQty] = useState(1);
-
-    const handleBuy = async () => {
-        try {
-            await addToCart(product.id, qty, userId);
-            alert(`Đã thêm ${qty} sản phẩm vào giỏ!`);
-        } catch (e: any) {
-            console.error(e);
-            alert('Lỗi: ' + (e?.response?.data?.error || e.message));
-        }
-    };
-
+const ProductCard: React.FC<{ product: Product; onOpenModal: (p: Product) => void }> = ({ product, onOpenModal }) => {
     return (
         <div className="product-card">
+            {/* Ảnh sản phẩm giả lập */}
+            <div style={{height: 200, background: '#f9f9f9', display:'flex', alignItems:'center', justifyContent:'center', marginBottom: 15}}>
+                <span style={{fontSize: 50}}>👕</span>
+            </div>
+
             <div>
                 <h3 className="product-card__name">{product.name}</h3>
                 <div className="product-card__price">
                     {product.price ? product.price.toLocaleString('vi-VN') + ' ₫' : 'Liên hệ'}
                 </div>
-                <p className="product-card__desc">
-                    {product.description || 'Sản phẩm chất lượng cao từ Uniqlo Mini.'}
-                </p>
                 <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '16px' }}>
                     #{product.categories?.join(', #') || 'general'}
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 'auto' }}>
-                <div className="qty-control">
-                    <button onClick={() => setQty(q => Math.max(1, q - 1))}>-</button>
-                    <input 
-                        type="number" 
-                        value={qty} 
-                        onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
-                    />
-                    <button onClick={() => setQty(q => q + 1)}>+</button>
-                </div>
-                
-                <button className="btn-buy" onClick={handleBuy}>
-                    <span>Thêm vào giỏ</span> 
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M20 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                </button>
-            </div>
+            {/* Nút thêm vào giỏ nằm dưới cùng, full width */}
+            <button 
+                className="btn-buy" 
+                style={{ width: '100%', marginTop: 'auto', justifyContent: 'center' }}
+                onClick={() => onOpenModal(product)} // Click thì gọi hàm mở modal
+            >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: 8}}><path d="M9 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M20 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                Thêm vào giỏ
+            </button>
         </div>
     );
 };
@@ -69,11 +56,15 @@ interface ProductListProps {
   userId?: number;     
 }
 
-export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId = 9 }) => {
+export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // State cho Modal
+  const [selectedProductDetail, setSelectedProductDetail] = useState<ProductDetail | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // State cho Admin
   const [editing, setEditing] = useState<Product | null>(null);
@@ -104,6 +95,37 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
   const handleSearch = () => {
     setPage(1);
     void loadData();
+  };
+
+  const handleOpenModal = async (product: Product) => {
+    try {
+        // 1. Gọi API lấy chi tiết (để có variants)
+        const detail = await fetchProductById(product.id);
+        setSelectedProductDetail(detail);
+        // 2. Mở Modal
+        setIsModalOpen(true);
+    } catch (err) {
+        alert('Lỗi tải chi tiết sản phẩm!');
+    }
+  };
+
+  const handleConfirmAddToCart = async (variantId: number, color: string, size: string, price: number, qty: number) => {
+      if (!selectedProductDetail) return;
+
+      try {
+          if (userId) {
+              // User: Gọi API
+              await addToCart(selectedProductDetail.id, variantId, qty, userId);
+              alert('Đã thêm vào giỏ hàng!');
+          } else {
+              // Guest: Lưu LocalStorage (Truyền đủ thông tin Màu/Size)
+              addToGuestCart(selectedProductDetail, variantId, color, size, price, qty);
+              alert('Đã thêm vào giỏ tạm!');
+          }
+          setIsModalOpen(false); // Đóng modal
+      } catch (e: any) {
+          alert('Lỗi: ' + e.message);
+      }
   };
 
   // --- CÁC HÀM ADMIN ---
@@ -229,9 +251,12 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
               // --- GIAO DIỆN KHÁCH HÀNG (Lưới) ---
               <div className="product-grid">
                   {pagedProducts.map(p => (
-                      <ProductCard key={p.id} product={p} userId={userId} />
+                      <ProductCard 
+                        key={p.id} 
+                        product={p} 
+                        onOpenModal={handleOpenModal} 
+                      />
                   ))}
-                  {pagedProducts.length === 0 && <div style={{width:'100%', textAlign:'center'}}>Không tìm thấy sản phẩm.</div>}
               </div>
           )}
           
@@ -242,11 +267,19 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
         </>
       )}
 
+      {isModalOpen && selectedProductDetail && (
+          <ProductVariantModal 
+              product={selectedProductDetail}
+              onClose={() => setIsModalOpen(false)}
+              onConfirm={handleConfirmAddToCart}
+          />
+      )}
+
       {showForm && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100}}>
-             <div style={{minWidth: 500, animation: 'fadeIn 0.3s'}}>
+            <div style={{minWidth: 500, animation: 'fadeIn 0.3s'}}>
                 <ProductForm initial={editing} onSubmit={handleSubmitForm} onCancel={() => setShowForm(false)} />
-             </div>
+            </div>
         </div>
       )}
     </div>

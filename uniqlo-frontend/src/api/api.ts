@@ -182,8 +182,13 @@ export async function fetchCart(userId: number): Promise<CartItemData[]> {
 }
 
 // Thêm vào giỏ có UserID và Quantity
-export async function addToCart(productId: number, quantity: number, userId: number): Promise<void> {
-  await api.post('/cart/add', { productId, variantId: 1, quantity, userId });
+export async function addToCart(
+  productId: number, 
+  variantId: number, 
+  quantity: number, 
+  userId: number
+): Promise<void> {
+  await api.post('/cart/add', { productId, variantId, quantity, userId });
 }
 
 // Checkout có UserID
@@ -201,7 +206,7 @@ export async function login(username: string, password: string): Promise<UserInf
   return response.data.user;
 }
 
-// ===== REGISTER API (MỚI) =====
+// ===== REGISTER API =====
 export async function register(payload: RegisterPayload): Promise<{ message: string }> {
     // Gọi xuống API backend (Backend cần xử lý insert vào Account và Customer)
     const response = await api.post('/auth/register', {
@@ -209,4 +214,79 @@ export async function register(payload: RegisterPayload): Promise<{ message: str
         role: 'Customer' // Mặc định đăng ký từ web là Customer
     });
     return response.data;
+}
+
+// ===== LOGIC GIỎ HÀNG KHÁCH (LOCAL STORAGE) =====
+const GUEST_CART_KEY = 'uniqlo_guest_cart';
+
+export function getGuestCart(): CartItemData[] {
+  const json = localStorage.getItem(GUEST_CART_KEY);
+  return json ? JSON.parse(json) : [];
+}
+
+export function addToGuestCart(
+  product: Product, 
+  variantId: number, 
+  color: string, 
+  size: string, 
+  price: number, 
+  quantity: number
+): void {
+  const currentCart = getGuestCart();
+  
+  // Kiểm tra trùng cả ProductID lẫn VariantID
+  const existingItemIndex = currentCart.findIndex(
+    item => item.ProductID === product.id && item.VariantID === variantId
+  );
+
+  if (existingItemIndex > -1) {
+    currentCart[existingItemIndex].Quantity += quantity;
+  } else {
+    const newItem: CartItemData = {
+      CartID: 0,
+      ProductID: product.id,
+      ProductName: product.name,
+      VariantID: variantId, // Lưu ID biến thể thật
+      Quantity: quantity,
+      Price: price,         // Lưu giá của biến thể đó
+      Color: color,         // Lưu màu thật
+      Size: size,           // Lưu size thật
+      Image: null 
+    };
+    currentCart.push(newItem);
+  }
+  localStorage.setItem(GUEST_CART_KEY, JSON.stringify(currentCart));
+}
+
+export function clearGuestCart() {
+  localStorage.removeItem(GUEST_CART_KEY);
+}
+
+// Hàm đồng bộ: Đẩy giỏ hàng Local lên Server sau khi Login
+export async function syncGuestCartToUser(userId: number) {
+  const guestCart = getGuestCart();
+  if (guestCart.length === 0) return;
+
+  // Lặp qua từng món và gọi API AddToCart (Có thể tối ưu bằng API bulk insert sau này)
+  for (const item of guestCart) {
+    await addToCart(item.ProductID, item.VariantID, item.Quantity, userId);
+  }
+  
+  // Sau khi đồng bộ xong thì xóa Local
+  clearGuestCart();
+}
+
+export function removeFromGuestCart(productId: number, variantId: number): void {
+  const currentCart = getGuestCart();
+  
+  // Lọc giữ lại những món KHÔNG khớp (xóa món khớp ID và Variant)
+  const newCart = currentCart.filter(
+    item => !(item.ProductID === productId && item.VariantID === variantId)
+  );
+  
+  localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
+}
+
+export async function removeFromCart(userId: number, productId: number, variantId: number): Promise<void> {
+  await api.post('/cart/remove', { userId, productId, variantId });
 }

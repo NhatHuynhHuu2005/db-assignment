@@ -261,3 +261,190 @@ GO
 -- Minh họa gọi fn_Get_Low_Stock_Products_ByStore
 -- SELECT * FROM dbo.fn_Get_Low_Stock_Products_ByStore(10, 50); -- Cửa hàng Đồng Khởi, Threshold 50
 -- SELECT * FROM dbo.fn_Get_Low_Stock_Products_ByStore(13, 5); -- Cửa hàng Bà Triệu, Threshold 5
+
+-- Thủ tục thêm, sửa, xoá nhân viên
+
+CREATE PROCEDURE sp_Create_Employee
+    @UserName VARCHAR(100),
+    @Email VARCHAR(255),
+    @Password VARCHAR(255),
+    @Role VARCHAR(50),      -- 'Admin' hoặc 'Employee'
+    @DoB DATE,
+    @Salary DECIMAL(18,2),
+    @StartDate DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- 1. Thêm vào bảng Account trước để lấy UserID
+        INSERT INTO Account (UserName, Email, Password, Role, DoB)
+        VALUES (@UserName, @Email, @Password, @Role, @DoB);
+
+        -- Lấy ID vừa tạo
+        DECLARE @NewUserID INT = SCOPE_IDENTITY();
+
+        -- 2. Thêm vào bảng Employee
+        INSERT INTO Employee (UserID, Salary, StartDate)
+        VALUES (@NewUserID, @Salary, @StartDate);
+
+        COMMIT TRANSACTION;
+        PRINT N'Thêm nhân viên thành công. ID: ' + CAST(@NewUserID AS NVARCHAR(10));
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW; -- Báo lỗi ra cho Backend biết
+    END CATCH
+END;
+GO
+
+CREATE PROCEDURE sp_Update_Employee
+    @UserID INT,
+    @Email VARCHAR(255) = NULL,
+    @Role VARCHAR(50) = NULL,
+    @Salary DECIMAL(18,2) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- 1. Cập nhật bảng Account (Nếu có truyền tham số)
+        IF @Email IS NOT NULL OR @Role IS NOT NULL
+        BEGIN
+            UPDATE Account
+            SET 
+                Email = ISNULL(@Email, Email),
+                Role = ISNULL(@Role, Role)
+            WHERE UserID = @UserID;
+        END
+
+        -- 2. Cập nhật bảng Employee (Nếu có truyền lương)
+        IF @Salary IS NOT NULL
+        BEGIN
+            UPDATE Employee
+            SET Salary = @Salary
+            WHERE UserID = @UserID;
+        END
+
+        COMMIT TRANSACTION;
+        PRINT N'Cập nhật nhân viên thành công.';
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+CREATE PROCEDURE sp_Delete_Employee
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        -- Kiểm tra xem ID này có phải là Employee không
+        IF NOT EXISTS (SELECT 1 FROM Employee WHERE UserID = @UserID)
+            THROW 50001, N'Người dùng này không phải là nhân viên hoặc không tồn tại.', 1;
+
+        BEGIN TRANSACTION;
+
+        -- Bước 1: Gỡ bỏ trách nhiệm của nhân viên này khỏi các bảng liên quan (Set NULL)
+        -- (Để tránh lỗi khóa ngoại FK khi xóa)
+        
+        -- Cập nhật Product: Ai phụ trách sản phẩm này -> Set NULL
+        UPDATE Product SET EmployeeID = NULL WHERE EmployeeID = @UserID;
+        
+        -- Cập nhật Store: Ai quản lý kho -> Set NULL (Hoặc gán cho Admin mặc định khác nếu muốn)
+        -- Lưu ý: Store.EmployeeID là NOT NULL trong create.sql, nên bước này cần cẩn thận.
+        -- Nếu Store bắt buộc phải có người quản lý, bạn KHÔNG THỂ xóa nhân viên này trừ khi gán Store cho người khác trước.
+        -- Ở đây tôi giả định logic đơn giản là xóa Account.
+
+        -- Bước 2: Xóa trong bảng Account
+        -- Nhờ ON DELETE CASCADE cấu hình trong create.sql, 
+        -- nó sẽ tự động xóa dòng tương ứng trong bảng Employee.
+        DELETE FROM Account WHERE UserID = @UserID;
+
+        COMMIT TRANSACTION;
+        PRINT N'Xóa nhân viên thành công.';
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        -- Bắt lỗi cụ thể nếu dính khóa ngoại (ví dụ Store bắt buộc có người quản lý)
+        IF ERROR_NUMBER() = 547 
+            PRINT N'Lỗi: Không thể xóa nhân viên này vì họ đang đứng tên quản lý Cửa hàng hoặc Đơn vị vận chuyển (Dữ liệu bắt buộc). Hãy chuyển quyền quản lý trước.';
+        ELSE
+            THROW;
+    END CATCH
+END;
+GO
+
+-- Thủ tục: Chuyển đổi giỏ hàng từ Khách vãng lai (IP) sang Khách hàng thành viên (User)
+CREATE PROCEDURE sp_Merge_Guest_Cart_To_User
+    @GuestIP NVARCHAR(45),
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        -- 1. Kiểm tra xem IP này có giỏ hàng tạm không
+        DECLARE @TempCartID INT;
+        SELECT @TempCartID = TempCartID FROM TemporaryCart WHERE GuestIP = @GuestIP;
+
+        IF @TempCartID IS NULL
+        BEGIN
+            -- Không có giỏ tạm thì không cần làm gì, nhưng vẫn ghi nhận Convert
+            INSERT INTO Convert_to (UserID, GuestIP) VALUES (@UserID, @GuestIP);
+            COMMIT TRANSACTION;
+            RETURN;
+        END
+
+        -- 2. Đảm bảo User đã có Giỏ hàng thật (Nếu chưa thì tạo)
+        DECLARE @UserCartID INT;
+        SELECT @UserCartID = CartID FROM Cart WHERE CustomerID = @UserID;
+
+        IF @UserCartID IS NULL
+        BEGIN
+            INSERT INTO Cart (CustomerID) VALUES (@UserID);
+            SET @UserCartID = SCOPE_IDENTITY();
+        END
+
+        -- 3. GỘP DỮ LIỆU (Logic khó nhất)
+        -- Duyệt qua từng món trong TempCartItem
+        -- Nếu món đó đã có trong Cart thật -> Cộng dồn số lượng
+        -- Nếu chưa có -> Thêm mới vào Cart thật
+
+        MERGE CartItem AS Target
+        USING (SELECT ProductID, VariantID, Quantity FROM TempCartItem WHERE TempCartID = @TempCartID) AS Source
+        ON (Target.CartID = @UserCartID AND Target.ProductID = Source.ProductID AND Target.VariantID = Source.VariantID)
+        
+        -- Nếu đã tồn tại món này rồi thì cộng thêm số lượng
+        WHEN MATCHED THEN
+            UPDATE SET Target.Quantity = Target.Quantity + Source.Quantity
+            
+        -- Nếu chưa tồn tại thì thêm mới
+        WHEN NOT MATCHED THEN
+            INSERT (CartID, Quantity, ProductID, VariantID)
+            VALUES (@UserCartID, Source.Quantity, Source.ProductID, Source.VariantID);
+
+        -- 4. Ghi nhận lịch sử chuyển đổi (Convert_to)
+        IF NOT EXISTS (SELECT 1 FROM Convert_to WHERE UserID = @UserID AND GuestIP = @GuestIP)
+        BEGIN
+            INSERT INTO Convert_to (UserID, GuestIP) VALUES (@UserID, @GuestIP);
+        END
+
+        -- 5. Dọn dẹp: Xóa giỏ hàng tạm sau khi đã chuyển xong
+        DELETE FROM TempCartItem WHERE TempCartID = @TempCartID;
+        DELETE FROM TemporaryCart WHERE TempCartID = @TempCartID;
+
+        COMMIT TRANSACTION;
+        PRINT N'Đã đồng bộ giỏ hàng thành công!';
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO

@@ -1,50 +1,78 @@
 import React, { useEffect, useState } from 'react';
-import { fetchCart, checkout, type CartItemData } from '../../api/api';
+import { useNavigate } from 'react-router-dom';
+import { fetchCart, checkout, getGuestCart, removeFromCart, removeFromGuestCart, type CartItemData } from '../../api/api';
 import '../../styles/Components.scss';
 
 // 1. Khai báo Interface nhận userId
 interface CartPageProps {
-  userId: number; 
+  userId?: number; 
 }
 
 // 2. Nhận userId vào props và destructure ra
 export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
   const [cartItems, setCartItems] = useState<CartItemData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  // Hàm tải giỏ hàng (cần userId)
   const loadCart = async () => {
     setLoading(true);
-    try {
-      const data = await fetchCart(userId); // Truyền userId vào API
+    if (userId) {
+      // 1. Nếu đã đăng nhập: Gọi API
+      try {
+        const data = await fetchCart(userId);
+        setCartItems(data);
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      // 2. Nếu là Khách: Lấy từ LocalStorage
+      const data = getGuestCart();
       setCartItems(data);
-      setError(null);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadCart();
+  }, [userId]); // Chạy lại khi trạng thái đăng nhập thay đổi
+
+  const handleRemoveItem = async (productId: number, variantId: number, productName: string) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa "${productName}" khỏi giỏ hàng?`)) return;
+
+    try {
+      if (userId) {
+        // Nếu là Member: Gọi API xóa DB
+        await removeFromCart(userId, productId, variantId);
+      } else {
+        // Nếu là Guest: Xóa LocalStorage
+        removeFromGuestCart(productId, variantId);
+      }
+      // Tải lại danh sách sau khi xóa
+      await loadCart();
     } catch (err: any) {
-      setError('Lỗi tải giỏ hàng');
-    } finally {
-      setLoading(false);
+      alert('Lỗi khi xóa sản phẩm: ' + err.message);
     }
   };
 
-  // Tự động tải lại khi userId thay đổi (VD: Đổi tài khoản)
-  useEffect(() => {
-    if (userId) {
-      void loadCart();
-    }
-  }, [userId]);
-
-  // Hàm thanh toán (cần userId)
   const handleCheckout = async () => {
+    // A. Kiểm tra đăng nhập
+    if (!userId) {
+      if (window.confirm('Bạn cần Đăng nhập để thanh toán. Đi đến trang đăng nhập ngay?')) {
+        navigate('/login');
+      }
+      return;
+    }
+
+    // Logic thanh toán
     if (cartItems.length === 0) return;
     if (!window.confirm('Bạn có chắc chắn muốn đặt hàng?')) return;
     
     try {
-      const res = await checkout(userId); // Truyền userId vào API
+      const res = await checkout(userId);
       alert(`Thanh toán thành công! Mã đơn: ${res.orderId}`);
-      void loadCart(); // Tải lại giỏ hàng (sẽ trống)
+      loadCart();
     } catch (err: any) {
-      alert('Lỗi thanh toán: ' + (err?.response?.data?.error || err.message));
+      alert('Lỗi thanh toán: ' + err.message);
     }
   };
 
@@ -60,11 +88,10 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
       </h2>
       
       <div className="card" style={{ borderRadius: 16, padding: 30, boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
         {cartItems.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
                 <div style={{fontSize: 60, marginBottom: 20}}>🛍️</div>
-                <p>Giỏ hàng đang trống trơn.</p>
+                <p>Giỏ hàng đang trống.</p>
                 <p>Hãy quay lại cửa hàng để chọn vài món đồ ưng ý nhé!</p>
             </div>
         ) : (
@@ -98,6 +125,21 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
                     <td style={{ fontWeight: 'bold', color: '#e00000' }}>
                         {(item.Price * item.Quantity).toLocaleString()} ₫
                     </td>
+                    <td style={{textAlign: 'center'}}>
+                        <button 
+                            onClick={() => handleRemoveItem(item.ProductID, item.VariantID, item.ProductName)}
+                            title="Xóa sản phẩm"
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer', 
+                                color: '#999', padding: 8, borderRadius: '50%',
+                                transition: 'background 0.2s, color 0.2s'
+                            }}
+                            onMouseOver={(e) => { e.currentTarget.style.color = 'red'; e.currentTarget.style.background = '#ffebee'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.color = '#999'; e.currentTarget.style.background = 'none'; }}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </button>
+                    </td>
                     </tr>
                 ))}
                 </tbody>
@@ -112,7 +154,7 @@ export const CartPage: React.FC<CartPageProps> = ({ userId }) => {
                     onClick={handleCheckout}
                     style={{ padding: '12px 40px', fontSize: '1.1rem', flex: 'none' }}
                 >
-                    Thanh toán ngay
+                    {userId ? 'Thanh toán ngay' : 'Đăng nhập để thanh toán'}
                 </button>
             </div>
             </>
