@@ -17,19 +17,59 @@ import { ProductForm } from './ProductForm.js';
 import { ProductVariantModal } from './ProductVariantModal';
 import '../../styles/Components.scss';
 
+// --- BẢNG ÁNH XẠ HÌNH ẢNH (Mapping) ---
+const PRODUCT_IMAGES: Record<string, string> = {
+    'Áo Giữ Nhiệt HEATTECH': 'Áo Giữ Nhiệt HEATTECH.jpg',
+    'Áo Polo Dry-EX Thoáng Khí': 'Áo Polo Dry-EX Thoáng Khí.jpg',
+    'Đầm Rayon Họa Tiết Hoa': 'Đầm Rayon Họa Tiết Hoa.webp',
+    'Quần Jeans Ultra Stretch': 'Quần Jeans Ultra Stretch.webp',
+    'Áo Khoác Chống Nắng UV Cut': 'Áo Khoác Chống Nắng UV Cut.jpg',
+    'Áo Sơ Mi Flannel Caro': 'Áo Sơ Mi Flannel Caro.jpg',
+    'Áo Thun Cổ Tròn Uniqlo U': 'Áo Thun Cổ Tròn Uniqlo U.avif'
+};
+
 // --- 1. COMPONENT CON: THẺ SẢN PHẨM (Dùng cho Khách Hàng) ---
-// Giúp mỗi sản phẩm có một ô nhập số lượng riêng
+// Đã hợp nhất: Dùng logic Modal (HEAD) nhưng lấy giao diện Ảnh đẹp (Remote)
 const ProductCard: React.FC<{ product: Product; onOpenModal: (p: Product) => void }> = ({ product, onOpenModal }) => {
+    
+    // Lấy đường dẫn ảnh từ code Remote
+    const imageName = PRODUCT_IMAGES[product.name];
+    const imageUrl = imageName ? `/images/${imageName}` : 'https://placehold.co/300x400?text=No+Image';
+
     return (
-        <div className="product-card">
-            {/* Ảnh sản phẩm giả lập */}
-            <div style={{height: 200, background: '#f9f9f9', display:'flex', alignItems:'center', justifyContent:'center', marginBottom: 15}}>
-                <span style={{fontSize: 50}}>👕</span>
+        <div className="product-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* --- PHẦN HÌNH ẢNH (Lấy từ Remote) --- */}
+            <div style={{ 
+                width: '100%', 
+                height: '320px', 
+                marginBottom: '15px', 
+                borderRadius: '8px', 
+                overflow: 'hidden',
+                backgroundColor: '#f5f5f5',
+                position: 'relative'
+            }}>
+                <img 
+                    src={imageUrl} 
+                    alt={product.name} 
+                    style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover', 
+                        objectPosition: 'top center',
+                        display: 'block',
+                        transition: 'transform 0.3s ease'
+                    }} 
+                    onError={(e) => {
+                        e.currentTarget.src = 'https://placehold.co/300x400?text=Image+Error';
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                />
             </div>
 
-            <div>
-                <h3 className="product-card__name">{product.name}</h3>
-                <div className="product-card__price">
+            <div style={{ flex: 1 }}>
+                <h3 className="product-card__name" style={{ fontSize: '1.1rem', marginBottom: '8px', lineHeight: '1.4' }}>{product.name}</h3>
+                <div className="product-card__price" style={{ color: '#e00000', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
                     {product.price ? product.price.toLocaleString('vi-VN') + ' ₫' : 'Liên hệ'}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '16px' }}>
@@ -37,11 +77,11 @@ const ProductCard: React.FC<{ product: Product; onOpenModal: (p: Product) => voi
                 </div>
             </div>
 
-            {/* Nút thêm vào giỏ nằm dưới cùng, full width */}
+            {/* --- NÚT CHỨC NĂNG (Giữ logic Modal từ HEAD) --- */}
             <button 
                 className="btn-buy" 
                 style={{ width: '100%', marginTop: 'auto', justifyContent: 'center' }}
-                onClick={() => onOpenModal(product)} // Click thì gọi hàm mở modal
+                onClick={() => onOpenModal(product)} 
             >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: 8}}><path d="M9 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M20 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                 Thêm vào giỏ
@@ -162,7 +202,14 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
       { 
           key: 'name', header: 'Tên sản phẩm', 
           render: (row) => (
-              <div style={{fontWeight: 600, color: '#333'}}>{row.name}</div>
+              <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
+                  <img 
+                    src={PRODUCT_IMAGES[row.name] ? `/images/${PRODUCT_IMAGES[row.name]}` : 'https://placehold.co/50'} 
+                    alt="" 
+                    style={{width: 40, height: 40, objectFit: 'cover', borderRadius: 4}}
+                  />
+                  <div style={{fontWeight: 600, color: '#333'}}>{row.name}</div>
+              </div>
           )
       },
       { 
@@ -172,7 +219,6 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
       { 
           key: 'categories', header: 'Danh mục', 
           render: (row) => (
-            // Biến danh mục thành các thẻ nhỏ (Tag)
             <div style={{display:'flex', gap: 5, flexWrap:'wrap'}}>
                 {row.categories?.map(c => (
                     <span key={c} style={{background:'#f5f5f5', padding:'4px 8px', borderRadius: 4, fontSize:'0.75rem', color:'#666'}}>
@@ -186,12 +232,9 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
         key: 'actions', header: 'Thao tác',
         render: (row) => (
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Nút Sửa */}
             <button className="action-btn edit" onClick={() => handleEdit(row)} title="Sửa">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
             </button>
-            
-            {/* Nút Xóa */}
             <button className="action-btn delete" onClick={() => handleDelete(row)} title="Xóa">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
             </button>
@@ -238,7 +281,6 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
       ) : (
         <>
           {role === 'seller' ? (
-              // --- GIAO DIỆN ADMIN (Bảng xịn) ---
               <div className="card" style={{borderRadius: 16, padding: 0, border:'none', overflow: 'hidden', boxShadow:'0 5px 20px rgba(0,0,0,0.05)'}}>
                   <DataTable<Product> 
                     columns={adminColumns} 
@@ -248,7 +290,6 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
                   />
               </div>
           ) : (
-              // --- GIAO DIỆN KHÁCH HÀNG (Lưới) ---
               <div className="product-grid">
                   {pagedProducts.map(p => (
                       <ProductCard 
@@ -260,7 +301,6 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
               </div>
           )}
           
-          {/* Phân trang */}
           <div style={{ marginTop: 40, display: 'flex', justifyContent: 'center' }}>
               <Paginator page={page} pageSize={pageSize} total={products.length} onChange={setPage} />
           </div>

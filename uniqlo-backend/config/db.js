@@ -5,7 +5,9 @@ dotenv.config(); // Đảm bảo nạp biến môi trường nếu có file .env
 
 const config = {
   // 1. Dùng 127.0.0.1 thay vì localhost để tránh lỗi IPv6 của Node.js
-  server: process.env.DB_SERVER || '127.0.0.1', 
+  // Trong BE/config/db.js
+server: process.env.DB_SERVER || '127.0.0.1', // Sửa từ '127.0.0.1' sang tên Server
+// ...
   
   // 2. Thêm port 1433 rõ ràng để không bị nhầm
   port: parseInt(process.env.DB_PORT) || 1433,

@@ -7,8 +7,7 @@ export const login = async (req, res) => {
   try {
     const pool = await getPool();
     
-    // 1. Kiểm tra username và password (đang lưu plain text trong sample_data)
-    // Lưu ý: Thực tế nên dùng bcrypt để hash password, nhưng bài này ta làm đơn giản.
+    // 1. Kiểm tra username và password
     const result = await pool.request()
       .input('UserName', sql.VarChar, username)
       .input('Password', sql.VarChar, password)
@@ -24,9 +23,7 @@ export const login = async (req, res) => {
 
     const user = result.recordset[0];
 
-    // 2. Mapping Role của DB sang Role của Frontend
-    // DB: 'Customer' -> FE: 'buyer'
-    // DB: 'Admin', 'Employee' -> FE: 'seller'
+    // 2. Mapping Role
     let feRole = 'buyer';
     if (user.Role === 'Admin' || user.Role === 'Employee') {
       feRole = 'seller';
@@ -39,7 +36,7 @@ export const login = async (req, res) => {
         name: user.UserName,
         email: user.Email,
         dbRole: user.Role,
-        role: feRole // Role dùng cho logic Frontend
+        role: feRole 
       }
     });
 
@@ -50,107 +47,94 @@ export const login = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-    const { username, password, email, phone, dob, role } = req.body;
+  // Lấy dữ liệu từ body request
+  const { username, password, email, phone, dob, role } = req.body; 
 
-    console.log("📥 Register Request:", { username, email, phone, dob }); // Log để debug
+  // Mặc định vai trò là 'Customer' nếu không được chỉ định
+  const userRole = role || 'Customer';
+
+  try {
+    const pool = await getPool();
+
+    // 1. Kiểm tra trùng lặp
+    const checkResult = await pool.request()
+        .input('UserName', sql.VarChar, username)
+        .input('Email', sql.VarChar, email)
+        .query(`
+          SELECT UserID FROM Account WHERE UserName = @UserName OR Email = @Email
+        `);
+
+    if (checkResult.recordset.length > 0) {
+      return res.status(409).json({ error: 'Tên đăng nhập hoặc Email đã tồn tại.' });
+    }
+
+    // 2. Thực hiện Transaction
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
 
     try {
-        // 1. Validate cơ bản
-        if (!username || !password || !email || !phone || !dob) {
-            return res.status(400).json({ error: 'Thiếu thông tin bắt buộc!' });
-        }
+      // 2a. INSERT vào bảng Account
+      await transaction.request()
+          .input('UserName', sql.VarChar, username)
+          .input('Password', sql.VarChar, password)
+          .input('Email', sql.VarChar, email)
+          .input('Role', sql.VarChar, userRole) 
+          .input('DOB', sql.Date, dob)
+          .query(`
+            INSERT INTO Account (UserName, Password, Role, Email, DoB) 
+            VALUES (@UserName, @Password, @Role, @Email, @DOB);
+          `);
 
-        // 2. Kết nối DB
-        const pool = await getPool();
-        const transaction = new sql.Transaction(pool);
-        
-        // Bắt đầu Transaction
-        await transaction.begin();
+      // 2b. Lấy UserID vừa tạo bằng SCOPE_IDENTITY()
+      const resultScopeID = await transaction.request()
+          .query('SELECT CONVERT(INT, SCOPE_IDENTITY()) AS UserIDValue');
+          
+      const newUserID = parseInt(resultScopeID.recordset[0].UserIDValue); 
+      
+      if (isNaN(newUserID) || newUserID === 0) {
+          throw new Error('Lỗi truy vấn ID: Lệnh INSERT Account bị từ chối.'); 
+      }
 
-        try {
-            // --- BƯỚC A: Thêm Account ---
-            const requestAccount = new sql.Request(transaction);
-            
-            // Xử lý Date: Đảm bảo dob là chuỗi YYYY-MM-DD hợp lệ hoặc Object Date
-            const birthDate = new Date(dob);
-            
-            const accountResult = await requestAccount
-                .input('Email', sql.VarChar, email)
-                .input('UserName', sql.VarChar, username)
-                .input('Password', sql.VarChar, password)
-                .input('Role', sql.VarChar, role || 'Customer')
-                .input('DoB', sql.Date, birthDate) // Truyền Date object để mssql tự xử lý
-                .query(`
-                    INSERT INTO Account (Email, UserName, Password, Role, DoB) 
-                    VALUES (@Email, @UserName, @Password, @Role, @DoB);
-                    SELECT SCOPE_IDENTITY() AS UserID;
-                `);
-            
-            const newUserID = accountResult.recordset[0].UserID;
-            console.log("✅ Created Account ID:", newUserID);
+      // 2c. INSERT vào bảng Customer nếu Role là 'Customer'
+      if (userRole === 'Customer') {
+          await transaction.request()
+              .input('UserID', sql.Int, newUserID) 
+              .query(`
+                INSERT INTO Customer (UserID) 
+                VALUES (@UserID);
+              `);
+      }
 
-            // --- BƯỚC B: Thêm Customer ---
-            const requestCustomer = new sql.Request(transaction);
-            await requestCustomer
-                .input('UserID', sql.Int, newUserID)
-                .query(`
-                    INSERT INTO Customer (UserID, Street, Ward, District, City)
-                    VALUES (@UserID, NULL, NULL, NULL, NULL)
-                `);
+      // 2d. INSERT số điện thoại vào bảng User_PhoneNumber
+      if (phone) { 
+          await transaction.request()
+              .input('UserID', sql.Int, newUserID)
+              .input('PhoneNumber', sql.VarChar, phone)
+              .query(`
+                INSERT INTO User_PhoneNumber (UserID, PhoneNumber) 
+                VALUES (@UserID, @PhoneNumber);
+              `);
+      }
+      
+      // Hoàn tất Transaction
+      await transaction.commit();
+      
+      res.status(201).json({ message: 'Đăng ký thành công! Vui lòng đăng nhập.' });
 
-            // --- BƯỚC C: Thêm SĐT ---
-            const requestPhone = new sql.Request(transaction);
-            await requestPhone
-                .input('UserID', sql.Int, newUserID)
-                .input('PhoneNumber', sql.VarChar, phone)
-                .query(`
-                    INSERT INTO User_PhoneNumber (UserID, PhoneNumber)
-                    VALUES (@UserID, @PhoneNumber)
-                `);
-
-            // Commit transaction
-            await transaction.commit();
-
-            res.status(201).json({ 
-                success: true, 
-                message: 'Đăng ký thành công!',
-                userId: newUserID 
-            });
-
-        } catch (err) {
-            await transaction.rollback(); // Rollback nếu lỗi
-            console.error('⚠️ SQL Error:', err); // In lỗi SQL chi tiết ra terminal
-
-            // Xử lý lỗi trùng lặp (Unique Key)
-            if (err.number === 2627) {
-                // Kiểm tra xem trùng cái gì
-                if (err.message.includes('Email')) {
-                    return res.status(409).json({ error: 'Email này đã được sử dụng.' });
-                }
-                if (err.message.includes('UserName')) {
-                    return res.status(409).json({ error: 'Tên đăng nhập đã tồn tại.' });
-                }
-                return res.status(409).json({ error: 'Thông tin đăng ký (Email/User) bị trùng.' });
-            }
-
-            // Xử lý lỗi Check Constraint (Tuổi, SĐT...)
-            if (err.number === 547) {
-                if (err.message.includes('CHK_Account_Age')) {
-                    return res.status(400).json({ error: 'Bạn phải đủ 18 tuổi.' });
-                }
-                if (err.message.includes('CHK_PhoneNumber')) {
-                    return res.status(400).json({ error: 'Số điện thoại không hợp lệ.' });
-                }
-                return res.status(400).json({ error: 'Dữ liệu không thỏa mãn điều kiện hệ thống.' });
-            }
-
-            // Trả về lỗi cụ thể thay vì "Lỗi Server nội bộ"
-            return res.status(400).json({ error: err.message });
-        }
-
-    } catch (error) {
-        console.error('❌ System Error:', error);
-        // Đây mới là chỗ sinh ra lỗi 500. Thường là do DB chưa connect được.
-        res.status(500).json({ error: 'Lỗi kết nối Server. Vui lòng kiểm tra log Terminal.' });
+    } catch (transactionError) {
+      await transaction.rollback();
+      
+      let errorMessage = transactionError.message;
+      if (transactionError.originalError && transactionError.originalError.info) {
+          errorMessage = transactionError.originalError.info.message;
+      }
+      
+      console.error("Lỗi Đăng ký (Transaction):", errorMessage);
+      res.status(500).json({ error: 'Đăng ký thất bại. Lỗi server: ' + errorMessage });
     }
+
+  } catch (err) {
+    console.error("Lỗi Đăng ký (Global):", err.message);
+    res.status(500).json({ error: 'Đăng ký thất bại. Lỗi server: ' + err.message });
+  }
 };
