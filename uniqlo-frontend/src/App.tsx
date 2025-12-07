@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter, NavLink, Route, Routes, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, NavLink, Route, Routes, Navigate, Link, useNavigate } from 'react-router-dom';
 import './styles/main.scss';
 import './styles/layout.scss';
 import { ProductList } from './components/products/ProductList';
@@ -8,6 +8,7 @@ import { StoreInventoryReport } from './components/reports/StoreInventoryReport'
 import { CartPage } from './components/cart/CartPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
+import { UserProfilePage } from './components/auth/UserProfilePage';
 import { type UserInfo, syncGuestCartToUser, clearGuestCart, CART_EVENT, getGuestCart, fetchCart, fetchUserProfile } from './api/api'; //
 import { EmployeeManager } from './components/admin/EmployeeManager';
 
@@ -39,9 +40,9 @@ const BuyerHome: React.FC = () => {
 // --- COMPONENT: MEMBER RANK BADGE (Thanh kinh nghiệm) ---
 const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
   const [showTooltip, setShowTooltip] = useState(false);
-
   const [isClosing, setIsClosing] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   // Cấu hình màu sắc (dùng biến CSS variable cho linh hoạt)
   const TIERS = [
@@ -84,19 +85,15 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
     '--rank-shadow': currentTier.shadow
   } as React.CSSProperties;
 
-  const handleClose = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation(); // Ngăn sự kiện click nổi bọt
+  const handleClose = (e?: React.MouseEvent | globalThis.MouseEvent) => { 
+    if (e) e.stopPropagation();
     
     if (showTooltip && !isClosing) {
-        setIsClosing(true); // Kích hoạt animation .closing trong SCSS
-        
-        // Xóa timeout cũ nếu có để tránh lỗi
+        setIsClosing(true);
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        
-        // Chờ 200ms (bằng thời gian animation popOut) rồi mới ẩn thật
         timeoutRef.current = setTimeout(() => {
             setShowTooltip(false);
-            setIsClosing(false); // Reset trạng thái
+            setIsClosing(false);
             timeoutRef.current = null;
         }, 200); 
     }
@@ -118,11 +115,29 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
       };
   }, []);
 
+  useEffect(() => {
+    // Chỉ định rõ event là globalThis.MouseEvent
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+        // Kiểm tra click ra ngoài
+        if (showTooltip && badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
+            handleClose(event); // Bây giờ dòng này sẽ không còn báo lỗi đỏ nữa
+        }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [showTooltip]);
+
   return (
     <div 
       className="rank-badge-container" 
       style={dynamicStyle}
       onClick={handleToggle}
+      ref={badgeRef}
     >
       {/* 1. COMPACT BADGE (HIỂN THỊ TRÊN NAVBAR) - Đơn giản hóa */}
       <div className="rank-label">
@@ -189,10 +204,14 @@ const MemberRankBadge: React.FC<{ user: UserInfo }> = ({ user }) => {
 };
 
 // --- COMPONENT NAVBAR (AppShell) ---
-// SỬA LỖI 3: Cho phép user là null
 const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefreshUser: () => void }> = ({ user, onLogout, onRefreshUser }) => {
   // State lưu số lượng
   const [cartCount, setCartCount] = useState(0);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  //const [showProfileModal, setShowProfileModal] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const navigate = useNavigate();
 
   // Hàm tính toán số lượng (Logic: Cộng dồn Quantity của từng món)
   const updateCount = async () => {
@@ -210,20 +229,25 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefres
     }
     setCartCount(count);
   };
-
+  
   // useEffect để lắng nghe sự kiện
   useEffect(() => {
-    // 1. Chạy ngay lần đầu vào trang
     updateCount();
-
-    // 2. Lắng nghe sự kiện thay đổi giỏ hàng
     window.addEventListener(CART_EVENT, updateCount);
+    
+    // Thêm type globalThis.MouseEvent vào đây
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            setIsDropdownOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
 
-    // 3. Dọn dẹp khi component bị hủy
     return () => {
       window.removeEventListener(CART_EVENT, updateCount);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [user]); // Chạy lại khi user thay đổi (login/logout)
+  }, [user]);
 
   // Helper xác định quyền
   const isCustomerOrGuest = !user || user.dbRole === 'Customer';
@@ -280,17 +304,81 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefres
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           {user ? (
             <>
+              {/* Rank Badge */}
               {user.role === 'buyer' && <MemberRankBadge user={user} />}
-              <div className="user-info">
-                <div className="name">{user.name}</div>
-                <div className="role">{user.dbRole}</div>
+              
+              {/* DROPDOWN USER */}
+              <div className="user-menu-container" ref={dropdownRef} style={{ position: 'relative' }}>
+                  {/* Nút kích hoạt Dropdown (Đã sửa giao diện) */}
+                  <div 
+                    className={`user-profile-btn ${isDropdownOpen ? 'active' : ''}`} // Áp dụng class mới
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                      {/* Avatar nhỏ (Option thêm cho đẹp, nếu không thích có thể bỏ div này) */}
+                      <div style={{
+                          width: 32, height: 32, borderRadius: '50%', 
+                          background: 'linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '14px', border: '1px solid #fff', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                      }}>
+                        👤
+                      </div>
+
+                      <div className="user-info">
+                        <div className="name">
+                            {user.name} 
+                            {/* Đã xóa mũi tên ▼ ở đây */}
+                        </div>
+                        <div className="role">{user.dbRole}</div>
+                      </div>
+                  </div>
+
+                  {/* MENU SỔ XUỐNG (Giữ nguyên logic cũ) */}
+                  {isDropdownOpen && (
+                      <div style={{
+                          position: 'absolute', top: '120%', right: 0, 
+                          background: 'white', minWidth: '220px', 
+                          borderRadius: '12px', boxShadow: '0 5px 20px rgba(0,0,0,0.15)',
+                          padding: '8px', zIndex: 1000, border: '1px solid rgba(0,0,0,0.05)',
+                          animation: 'fadeIn 0.2s ease'
+                      }}>
+                          {/* Item 1: Thông tin cá nhân */}
+                          <div 
+                            onClick={() => { 
+                                navigate('/profile'); 
+                                setIsDropdownOpen(false); 
+                            }}
+                            style={{ 
+                                padding: '10px 15px', borderRadius:'6px', cursor:'pointer', 
+                                display:'flex', alignItems:'center', gap: 10, color:'#333', fontSize:'0.95rem',
+                                transition: 'background 0.2s' 
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f5f7fa'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                             <span>👤</span> Thông tin cá nhân
+                          </div>
+                          
+                          <div style={{height: 1, background:'#eee', margin:'5px 0'}}></div>
+
+                          {/* Item 2: Đăng xuất */}
+                          <div 
+                             onClick={() => { setIsDropdownOpen(false); onLogout(); }}
+                             style={{ 
+                                 padding: '10px 15px', borderRadius:'6px', cursor:'pointer', 
+                                 display:'flex', alignItems:'center', gap: 10, color:'#e00000', fontSize:'0.95rem', fontWeight: 500
+                             }}
+                             onMouseEnter={(e) => e.currentTarget.style.background = '#fff0f0'}
+                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                             <span>🚪</span> Đăng xuất
+                          </div>
+                      </div>
+                  )}
               </div>
-              <button onClick={onLogout} className="btn-logout">
-                Đăng xuất
-              </button>
             </>
           ) : (
-            // Header cho khách chưa đăng nhập
+            // Phần chưa đăng nhập giữ nguyên
             <div style={{ display: 'flex', gap: 15 }}>
                 <Link to="/login" style={{ textDecoration:'none', fontWeight:'bold', color:'#333' }}>Đăng nhập</Link>
                 <Link to="/register" style={{ textDecoration:'none', fontWeight:'bold', color:'#e00000' }}>Đăng ký</Link>
@@ -309,6 +397,10 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefres
           {/* Chỉ User mới vào được trang My Orders */}
           {user && user.role === 'buyer' && (
               <Route path="/my-orders" element={<CustomerOrdersReport role="buyer" currentUserId={user.id} />} />
+          )}
+
+          {user && (
+              <Route path="/profile" element={<UserProfilePage user={user} />} />
           )}
 
            {/* --- ROUTE CHO ADMIN --- */}

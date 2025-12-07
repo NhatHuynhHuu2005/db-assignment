@@ -360,3 +360,186 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
     // filter: blur(5px);
   }
 }
+
+/* --- PROFILE PAGE STYLES --- */
+.profile-page-container {
+    min-height: calc(100vh - 70px);
+    background: #f5f7fa;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.profile-card {
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    padding: 40px;
+    animation: fadeIn 0.4s ease;
+
+    .profile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+
+        .avatar-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .avatar-circle {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #e00000 0%, #ff4d4d 100%);
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 15px rgba(224, 0, 0, 0.3);
+        }
+
+        .user-name {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #333;
+        }
+
+        .user-badge {
+            background: #f0f2f5;
+            color: #666;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .btn-back {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            &:hover { background: #f9f9f9; border-color: #bbb; }
+        }
+    }
+
+    .divider {
+        border: 0;
+        border-top: 1px solid #eee;
+        margin-bottom: 30px;
+    }
+
+    .profile-body {
+        display: grid;
+        grid-template-columns: 2fr 1fr; /* Chia cột 2 phần thông tin, 1 phần thống kê */
+        gap: 40px;
+
+        @media (max-width: 768px) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        color: #333;
+        margin-bottom: 20px;
+        border-left: 4px solid #e00000;
+        padding-left: 10px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+
+        .info-item {
+            label { font-size: 0.85rem; color: #888; display: block; margin-bottom: 5px; }
+            p { font-weight: 600; font-size: 1rem; color: #333; margin: 0; }
+            
+            &.full-width { grid-column: span 2; }
+        }
+    }
+
+    .stats-card {
+        background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+        border: 1px solid #ffebeb;
+        padding: 20px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+
+        .stats-icon { font-size: 2rem; }
+        .stats-info label { display: block; font-size: 0.85rem; color: #666; }
+        .stats-value { font-size: 1.4rem; font-weight: 800; color: #e00000; }
+        
+        &.mt-3 { margin-top: 15px; background: #f8f9fa; border-color: #eee; }
+    }
+}
+
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  
+  /* Tạo hình dáng viên thuốc giống Rank Badge */
+  padding: 6px 16px;
+  border-radius: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  
+  /* Animation mượt mà */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  .user-info {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    .name {
+      /* Font chữ Tên: Đậm và rõ ràng */
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #2d3436;
+      line-height: 1.2;
+      letter-spacing: 0.3px;
+    }
+
+    .role {
+      /* Font chữ Role: Nhỏ, in hoa, dãn cách chữ sang trọng */
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.65rem;
+      color: #636e72;
+      text-transform: uppercase; /* Chữ in hoa */
+      letter-spacing: 1px;       /* Dãn cách chữ */
+      font-weight: 700;
+      margin-top: 2px;
+    }
+  }
+
+  /* --- HIỆU ỨNG KHI DI CHUỘT (HOVER) --- */
+  &:hover, &.active {
+    background: #fff;
+    transform: translateY(-2px); /* Nổi lên */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Đổ bóng nhẹ */
+    border-color: rgba(0,0,0,0.05);
+  }
+
+  /* Hiệu ứng khi bấm */
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
+}

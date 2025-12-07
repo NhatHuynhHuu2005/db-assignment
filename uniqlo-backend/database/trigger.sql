@@ -225,3 +225,43 @@ BEGIN
     END
 END;
 GO
+
+-- Trigger kiểm tra tồn kho khi thêm/sửa OrderItem
+CREATE OR ALTER TRIGGER trg_CheckStock_OnOrderItem
+ON OrderItem
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN Has_Stock hs ON hs.ProductID = i.ProductID 
+                         AND hs.VariantID = i.VariantID
+        WHERE hs.Quantity < i.Quantity
+    )
+    BEGIN
+        RAISERROR('Không đủ tồn kho cho sản phẩm.', 16, 1);
+        ROLLBACK;
+        RETURN;
+    END
+END;
+GO
+
+-- Trigger cập nhật tổng tồn kho Store.TotalStockQuantity
+CREATE OR ALTER TRIGGER trg_UpdateStoreTotalStock
+ON Has_Stock
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE s
+    SET TotalStockQuantity = ISNULL(t.TotalItems, 0)
+    FROM Store s
+    JOIN (
+        SELECT StoreID, SUM(Quantity) AS TotalItems
+        FROM Has_Stock
+        GROUP BY StoreID
+    ) t ON s.StoreID = t.StoreID;
+END;
+GO

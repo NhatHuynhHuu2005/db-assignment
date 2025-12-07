@@ -218,6 +218,14 @@ export const ProductList: React.FC<ProductListProps> = ({ role = 'buyer', userId
           )
       },
       { 
+          key: 'variantSummary', header: 'Phân loại (Màu/Size)', 
+          render: (row) => (
+            <div style={{fontSize: '0.85rem', color: '#555', maxWidth: '200px'}}>
+                {row.variantSummary ? row.variantSummary : <span style={{fontStyle:'italic', color:'#999'}}>(Chưa có)</span>}
+            </div>
+          ) 
+      },
+      { 
           key: 'price', header: 'Giá niêm yết', 
           render: (row) => <span style={{color:'#e00000', fontWeight:'bold'}}>{row.price?.toLocaleString()} ₫</span> 
       },

@@ -19,6 +19,7 @@ export interface Product {
   description?: string;
   employeeId?: number;
   categories: string[];
+  variantSummary?: string;
 }
 
 export interface ProductDetail extends Product {
@@ -33,10 +34,19 @@ export interface ProductDetail extends Product {
   }>;
 }
 
+export interface VariantPayload {
+  variantId?: number;
+  color: string;
+  size: string;
+  price: number;
+}
+
 export interface ProductPayload {
   name: string;
   description?: string;
   employeeId: number;
+  variants: VariantPayload[];
+  categoryIds?: number[];
 }
 
 export interface CustomerOrderRow {
@@ -71,6 +81,9 @@ export interface UserInfo {
   role: 'buyer' | 'seller'; // Role để FE xử lý giao diện
   totalSpent?: number;
   memberTier?: string;
+  phone?: string;
+  address?: string;
+  dob?: string;
 }
 
 // ===== AUTH Types =====
@@ -101,7 +114,9 @@ export async function createProduct(payload: ProductPayload): Promise<Product> {
   const response = await api.post<Product>('/products', {
     productName: payload.name,
     description: payload.description,
-    employeeId: payload.employeeId
+    employeeId: payload.employeeId,
+    variants: payload.variants,   
+    categoryIds: payload.categoryIds  
   });
   return {
     ...response.data,
@@ -111,12 +126,14 @@ export async function createProduct(payload: ProductPayload): Promise<Product> {
 
 export async function updateProduct(
   id: number,
-  payload: Partial<ProductPayload>
+  payload: Partial<ProductPayload> // Payload nhận từ Form
 ): Promise<Product> {
   const response = await api.put<Product>(`/products/${id}`, {
     productName: payload.name,
     description: payload.description,
-    employeeId: payload.employeeId
+    employeeId: payload.employeeId,
+    variants: payload.variants,
+    categoryIds: payload.categoryIds 
   });
   return {
     ...response.data,

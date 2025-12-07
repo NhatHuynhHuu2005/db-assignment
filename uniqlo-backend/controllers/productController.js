@@ -8,14 +8,17 @@ function mapProductListRow(row) {
     name: row.ProductName,
     price: row.Price,
     description: row.Description,
-    employeeId: row.EmployeeID,
+    // Sửa lỗi logic: Nếu có EmployeeID thì trả về, không thì null
+    employeeId: row.EmployeeID, 
+    // categoryId: row.MainCategoryID, // Dòng này sẽ được xử lý ở hàm map bên dưới
     categories: row.Categories
       ? row.Categories.split(',').map((c) => c.trim())
-      : []
+      : [],
+    variantSummary: row.VariantSummary
   };
 }
 
-// 1. LẤY DANH SÁCH SẢN PHẨM (Đã sửa lỗi lặp & lỗi pv.Price)
+// 1. LẤY DANH SÁCH SẢN PHẨM
 export const getProducts = async (req, res) => {
   try {
     const { search, categoryId } = req.query;
@@ -28,13 +31,17 @@ export const getProducts = async (req, res) => {
         p.ProductName,
         p.Description,
         p.EmployeeID,
-        -- SỬA Ở ĐÂY: Dùng Subquery để lấy giá, KHÔNG dùng pv.Price
         (SELECT MIN(Price) FROM ProductVariant WHERE ProductID = p.ProductID) as Price,
-        STRING_AGG(c.CategoryName, ', ') AS Categories
+        STRING_AGG(c.CategoryName, ', ') AS Categories,
+        (
+            SELECT STRING_AGG(CONCAT(Color, '/', Size), ', ') 
+            FROM ProductVariant 
+            WHERE ProductID = p.ProductID
+        ) AS VariantSummary,
+        MAX(bt.CategoryID) as MainCategoryID
       FROM [Product] p
       LEFT JOIN Belongs_To bt ON p.ProductID = bt.ProductID
       LEFT JOIN Category c ON bt.CategoryID = c.CategoryID
-      -- QUAN TRỌNG: Không JOIN ProductVariant ở đây nữa để tránh lặp dòng
     `;
 
     const conditions = [];
@@ -59,7 +66,12 @@ export const getProducts = async (req, res) => {
     `;
 
     const result = await request.query(query);
-    const products = result.recordset.map(mapProductListRow);
+    
+    // Map dữ liệu: kết hợp Helper và thêm trường categoryId
+    const products = result.recordset.map(row => ({
+        ...mapProductListRow(row),     // Dấu ... dùng để copy các trường từ hàm helper
+        categoryId: row.MainCategoryID // Bổ sung field này để Form Edit tự động tick chọn danh mục
+    }));
 
     res.json(products);
   } catch (err) {
@@ -82,36 +94,22 @@ export const getProductById = async (req, res) => {
 
     const result = await request.query(`
       -- Thông tin product
-      SELECT 
-        p.ProductID,
-        p.ProductName,
-        p.Description,
-        p.EmployeeID
+      SELECT p.ProductID, p.ProductName, p.Description, p.EmployeeID
       FROM [Product] p
       WHERE p.ProductID = @ProductID;
 
       -- Categories
-      SELECT 
-        c.CategoryID,
-        c.CategoryName
+      SELECT c.CategoryID, c.CategoryName
       FROM Category c
-      INNER JOIN Belongs_To bt 
-        ON c.CategoryID = bt.CategoryID
+      INNER JOIN Belongs_To bt ON c.CategoryID = bt.CategoryID
       WHERE bt.ProductID = @ProductID;
 
       -- Variants + ImageURL
       SELECT 
-        pv.ProductID,
-        pv.VariantID,
-        pv.Color,
-        pv.Size,
-        pv.Price,
-        i.ImageURL,
+        pv.ProductID, pv.VariantID, pv.Color, pv.Size, pv.Price, i.ImageURL,
         (SELECT ISNULL(SUM(Quantity), 0) FROM Has_Stock WHERE ProductID = pv.ProductID AND VariantID = pv.VariantID) AS StockQuantity
       FROM ProductVariant pv
-      LEFT JOIN ProductVariant_ImageURL i
-        ON pv.ProductID = i.ProductID 
-        AND pv.VariantID = i.VariantID
+      LEFT JOIN ProductVariant_ImageURL i ON pv.ProductID = i.ProductID AND pv.VariantID = i.VariantID
       WHERE pv.ProductID = @ProductID;
     `);
 
@@ -122,12 +120,12 @@ export const getProductById = async (req, res) => {
     }
 
     const p = productRows[0];
-
     const categories = categoryRows.map((c) => ({
       id: c.CategoryID,
       name: c.CategoryName
     }));
 
+    // Gom nhóm variants
     const variantMap = new Map();
     for (const v of variantRows) {
       const key = `${v.ProductID}-${v.VariantID}`;
@@ -147,18 +145,16 @@ export const getProductById = async (req, res) => {
       }
     }
 
-    const variants = Array.from(variantMap.values());
-
-    const product = {
+    res.json({
       id: p.ProductID,
       name: p.ProductName,
       description: p.Description,
       employeeId: p.EmployeeID,
       categories,
-      variants
-    };
+      categoryId: categories.length > 0 ? categories[0].id : null, // Trả về 1 ID để binding vào Form
+      variants: Array.from(variantMap.values())
+    });
 
-    res.json(product);
   } catch (err) {
     console.error('getProductById error:', err);
     res.status(500).json({ error: 'Failed to fetch product detail' });
@@ -168,62 +164,68 @@ export const getProductById = async (req, res) => {
 // 3. TẠO SẢN PHẨM
 export const createProduct = async (req, res) => {
   try {
-    const { productName, description, employeeId } = req.body;
+    const { productName, description, employeeId, variants, categoryIds } = req.body;
 
-    if (!productName || !employeeId) {
-      return res.status(400).json({
-        error: 'productName và employeeId là bắt buộc'
-      });
-    }
+    // --- LOGIC XỬ LÝ MẢNG CATEGORY ---
+    if (!productName || !employeeId) return res.status(400).json({ error: 'Thiếu tên hoặc nhân viên' });
+    if (!variants || variants.length === 0) return res.status(400).json({ error: 'Phải có ít nhất 1 biến thể (Màu, Size, ...)' });
 
     const pool = await getPool();
-    const request = pool.request();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
 
-    request
-      .input('ProductName', sql.NVarChar(100), productName)
-      .input('Description', sql.NVarChar(sql.MAX), description || null)
-      .input('EmployeeID', sql.Int, Number(employeeId));
+    try {
+      const request = new sql.Request(transaction);
 
-    const result = await request.query(`
-      EXEC sp_Insert_Product 
-        @ProductName = @ProductName,
-        @Description = @Description,
-        @EmployeeID = @EmployeeID;
-      SELECT IDENT_CURRENT('Product') AS ProductID;
-    `);
+      // BƯỚC 1: Tạo Product
+      request.input('ProductName', sql.NVarChar(100), productName);
+      request.input('Description', sql.NVarChar(sql.MAX), description || null);
+      request.input('EmployeeID', sql.Int, Number(employeeId));
 
-    const newId =
-      (result.recordset && result.recordset[0] && result.recordset[0].ProductID) ||
-      (result.recordsets &&
-        result.recordsets[0] &&
-        result.recordsets[0][0] &&
-        result.recordsets[0][0].ProductID);
+      const productResult = await request.query(`
+        INSERT INTO [Product] (ProductName, Description, EmployeeID)
+        OUTPUT INSERTED.ProductID
+        VALUES (@ProductName, @Description, @EmployeeID);
+      `);
+      const newProductId = productResult.recordset[0].ProductID;
 
-    if (!newId) {
-      return res.status(201).json({
-        message: 'Product created, but could not retrieve new ProductID'
-      });
+      // BƯỚC 2: Tạo Variant mặc định (để lưu Giá)
+      let vId = 1;
+      for (const v of variants) {
+          const reqVar = new sql.Request(transaction);
+          reqVar.input('ProductID', sql.Int, newProductId);
+          reqVar.input('VariantID', sql.Int, vId);
+          reqVar.input('Color', sql.NVarChar(50), v.color);
+          reqVar.input('Size', sql.NVarChar(50), v.size);
+          reqVar.input('Price', sql.Decimal(10, 2), Number(v.price));
+          
+          await reqVar.query(`
+            INSERT INTO ProductVariant (ProductID, VariantID, Color, Size, Price)
+            VALUES (@ProductID, @VariantID, @Color, @Size, @Price)
+          `);
+          vId++;
+      }
+
+      // BƯỚC 3: Lưu Danh mục (Hỗ trợ nhiều danh mục)
+      if (categoryIds && categoryIds.length > 0) {
+         for (const catId of categoryIds) {
+             const reqCat = new sql.Request(transaction);
+             reqCat.input('ProductID', sql.Int, newProductId);
+             reqCat.input('CategoryID', sql.Int, Number(catId));
+             await reqCat.query(`INSERT INTO Belongs_To (ProductID, CategoryID) VALUES (@ProductID, @CategoryID)`);
+         }
+      }
+
+      await transaction.commit();
+      res.status(201).json({ id: newProductId, message: "Tạo thành công" });
+
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
     }
-
-    // Lấy lại thông tin để trả về
-    const productResult = await pool
-      .request()
-      .input('ProductID', sql.Int, Number(newId))
-      .query(`SELECT ProductID, ProductName, Description, EmployeeID FROM [Product] WHERE ProductID = @ProductID`);
-
-    const p = productResult.recordset[0];
-
-    res.status(201).json({
-      id: p.ProductID,
-      name: p.ProductName,
-      description: p.Description,
-      employeeId: p.EmployeeID
-    });
   } catch (err) {
     console.error('createProduct error:', err);
-    res.status(400).json({
-      error: err.message || 'Failed to create product'
-    });
+    res.status(400).json({ error: err.message || 'Failed to create product' });
   }
 };
 
@@ -231,44 +233,90 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const productId = Number(req.params.id);
-    if (Number.isNaN(productId)) {
-      return res.status(400).json({ error: 'Invalid product id' });
-    }
+    // Lấy thêm categoryId để fallback nếu client gửi format cũ
+    const { productName, description, employeeId, categoryIds, categoryId, variants } = req.body;
 
-    const { productName, description, employeeId } = req.body;
+    // --- FIX LỖI: ĐỊNH NGHĨA BIẾN finalCategoryIds ---
+    let finalCategoryIds = [];
+    if (categoryIds && Array.isArray(categoryIds)) {
+        finalCategoryIds = categoryIds;
+    } else if (categoryId) {
+        finalCategoryIds = [Number(categoryId)];
+    }
+    // --------------------------------------------------
+
     const pool = await getPool();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
 
-    const request = pool.request();
-    request
-      .input('ProductID', sql.Int, productId)
-      .input('ProductName', sql.NVarChar(100), productName ?? null)
-      .input('Description', sql.NVarChar(sql.MAX), description ?? null)
-      .input('EmployeeID', sql.Int, employeeId !== undefined ? Number(employeeId) : null);
+    try {
+      const request = new sql.Request(transaction);
+      
+      // B1: Update Product Info
+      request.input('ProductID', sql.Int, productId);
+      request.input('ProductName', sql.NVarChar(100), productName);
+      request.input('Description', sql.NVarChar(sql.MAX), description);
+      request.input('EmployeeID', sql.Int, employeeId);
+      await request.execute('sp_Update_Product');
 
-    await request.execute('sp_Update_Product');
+      // B2: Xử lý Variants (Upsert: Có ID thì Update, Chưa có thì Insert)
+      // Lấy Max VariantID hiện tại
+      const maxIdResult = await new sql.Request(transaction).query(`SELECT ISNULL(MAX(VariantID), 0) as MaxID FROM ProductVariant WHERE ProductID = ${productId}`);
+      let nextVariantId = maxIdResult.recordset[0].MaxID + 1;
 
-    const productResult = await pool
-      .request()
-      .input('ProductID', sql.Int, productId)
-      .query(`SELECT ProductID, ProductName, Description, EmployeeID FROM [Product] WHERE ProductID = @ProductID`);
+      if (variants && variants.length > 0) {
+        for (const v of variants) {
+            const reqVar = new sql.Request(transaction);
+            reqVar.input('ProductID', sql.Int, productId);
+            reqVar.input('Color', sql.NVarChar(50), v.color);
+            reqVar.input('Size', sql.NVarChar(50), v.size);
+            reqVar.input('Price', sql.Decimal(10, 2), Number(v.price));
 
-    if (productResult.recordset.length === 0) {
-      return res.status(404).json({ error: 'Product not found after update' });
+            if (v.variantId) {
+                // UPDATE
+                reqVar.input('VariantID', sql.Int, v.variantId);
+                await reqVar.query(`
+                    UPDATE ProductVariant 
+                    SET Color = @Color, Size = @Size, Price = @Price 
+                    WHERE ProductID = @ProductID AND VariantID = @VariantID
+                `);
+            } else {
+                // INSERT NEW
+                reqVar.input('VariantID', sql.Int, nextVariantId);
+                await reqVar.query(`
+                    INSERT INTO ProductVariant (ProductID, VariantID, Color, Size, Price)
+                    VALUES (@ProductID, @VariantID, @Color, @Size, @Price)
+                `);
+                nextVariantId++;
+            }
+        }
+      }
+
+      // B3: Update Categories (Dùng finalCategoryIds đã định nghĩa ở trên)
+      if (finalCategoryIds.length > 0) {
+        const requestDel = new sql.Request(transaction);
+        requestDel.input('ProductID', sql.Int, productId);
+        // Xóa danh mục cũ
+        await requestDel.query('DELETE FROM Belongs_To WHERE ProductID = @ProductID');
+
+        // Thêm danh mục mới
+        for (const catId of finalCategoryIds) {
+           const requestCat = new sql.Request(transaction);
+           requestCat.input('ProductID', sql.Int, productId);
+           requestCat.input('CategoryID', sql.Int, Number(catId));
+           await requestCat.query(`INSERT INTO Belongs_To (ProductID, CategoryID) VALUES (@ProductID, @CategoryID)`);
+        }
+      }
+
+      await transaction.commit();
+      res.json({ message: "Update thành công" });
+    } catch (err) {
+        await transaction.rollback();
+        throw err;
     }
-
-    const p = productResult.recordset[0];
-
-    res.json({
-      id: p.ProductID,
-      name: p.ProductName,
-      description: p.Description,
-      employeeId: p.EmployeeID
-    });
   } catch (err) {
-    console.error('updateProduct error:', err);
-    res.status(400).json({
-      error: err.message || 'Failed to update product'
-    });
+      console.error("Update Error:", err);
+      res.status(500).json({ error: err.message });
   }
 };
 
@@ -283,14 +331,11 @@ export const deleteProduct = async (req, res) => {
     const pool = await getPool();
     const request = pool.request();
     request.input('ProductID', sql.Int, productId);
-
     await request.execute('sp_Delete_Product');
 
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     console.error('deleteProduct error:', err);
-    res.status(400).json({
-      error: err.message || 'Failed to delete product'
-    });
+    res.status(400).json({ error: err.message || 'Failed to delete product' });
   }
 };

@@ -10,17 +10,23 @@ export const getProfile = async (req, res) => {
       .input('UserID', sql.Int, userId)
       .query(`
         SELECT 
-            A.UserID, A.UserName, A.Role, A.Email,
-            C.TotalSpent, C.MemberTier
+            A.UserID, A.UserName, A.Email, A.Role, A.DoB,
+            C.Street, C.Ward, C.District, C.City, C.TotalSpent, C.MemberTier,
+            (SELECT TOP 1 PhoneNumber FROM User_PhoneNumber WHERE UserID = A.UserID) as Phone
         FROM Account A
         LEFT JOIN Customer C ON A.UserID = C.UserID
         WHERE A.UserID = @UserID
       `);
 
-    if (result.recordset.length === 0) return res.status(404).json({error: 'User not found'});
-    
-    const user = result.recordset[0];
-    let feRole = (user.Role === 'Admin' || user.Role === 'Employee') ? 'seller' : 'buyer';
+    if (result.recordset.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const u = result.recordset[0];
+    let feRole = (u.Role === 'Admin' || u.Role === 'Employee') ? 'seller' : 'buyer';
+
+    // Tạo chuỗi địa chỉ đầy đủ
+    const fullAddress = [u.Street, u.Ward, u.District, u.City]
+        .filter(part => part) // Lọc bỏ giá trị null/rỗng
+        .join(', ');
 
     res.json({
         id: user.UserID,
@@ -29,7 +35,10 @@ export const getProfile = async (req, res) => {
         dbRole: user.Role,
         role: feRole,
         totalSpent: user.TotalSpent || 0,       // Quan trọng: Lấy số tiền mới nhất
-        memberTier: user.MemberTier || 'New Member'
+        memberTier: user.MemberTier || 'New Member',
+        dob: u.DoB,
+        phone: u.Phone || '',
+        address: fullAddress || 'Chưa cập nhật'
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
