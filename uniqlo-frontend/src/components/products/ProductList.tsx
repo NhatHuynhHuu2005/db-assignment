@@ -20,13 +20,21 @@ import '../../styles/Components.scss';
 
 // --- BẢNG ÁNH XẠ HÌNH ẢNH (Mapping) ---
 const PRODUCT_IMAGES: Record<string, string> = {
-    'Áo Giữ Nhiệt HEATTECH': 'Áo Giữ Nhiệt HEATTECH.jpg',
+    'Áo Giữ Nhiệt HEATTECH Cổ Tròn': 'Áo Giữ Nhiệt HEATTECH.jpg',
     'Áo Polo Dry-EX Thoáng Khí': 'Áo Polo Dry-EX Thoáng Khí.jpg',
-    'Đầm Rayon Họa Tiết Hoa': 'Đầm Rayon Họa Tiết Hoa.webp',
-    'Quần Jeans Ultra Stretch': 'Quần Jeans Ultra Stretch.webp',
-    'Áo Khoác Chống Nắng UV Cut': 'Áo Khoác Chống Nắng UV Cut.jpg',
-    'Áo Sơ Mi Flannel Caro': 'Áo Sơ Mi Flannel Caro.jpg',
-    'Áo Thun Cổ Tròn Uniqlo U': 'Áo Thun Cổ Tròn Uniqlo U.avif'
+    'Đầm Rayon Họa Tiết Hoa Dài': 'Đầm Rayon Họa Tiết Hoa.webp',
+    'Quần Jeans Nữ Ultra Stretch': 'Quần Jeans Ultra Stretch.webp',
+    'Áo Khoác Parka Chống Nắng UV': 'Áo Khoác Chống Nắng UV Cut.jpg',
+    'Áo Sơ Mi Nam Flannel Caro': 'Áo Sơ Mi Flannel Caro.jpg',
+    'Áo Thun Cổ Tròn U (Cotton)': 'Áo Thun Cổ Tròn Uniqlo U.avif',
+    'Váy Chân Váy Xếp Ly Chiffon': 'Váy Chân Váy Xếp Ly Chiffon.png',
+    'Quần Kaki Ống Đứng Nam': 'Quần Kaki Ống Đứng Nam.jpg',
+    'Áo Len Lông Cừu Cao Cấp': 'Áo Len Lông Cừu Cao Cấp.jpg',
+    'Túi Đeo Vai Mini Da Pu': 'Túi Đeo Vai Mini Da Pu.avif',
+    'Vớ Thể Thao Dry-Ex': 'Vớ Thể Thao Dry-Ex.webp',
+    'Áo Bra Top Cotton': 'Áo Bra Top Cotton.avif',
+    'Áo Khoác Puffer Siêu Nhẹ': 'Áo Khoác Puffer Siêu Nhẹ.webp',
+    'Quần Short Nữ Vải Lanh': 'Quần Short Nữ Vải Lanh.jpg'
 };
 
 // --- 1. COMPONENT CON: THẺ SẢN PHẨM (Dùng cho Khách Hàng) ---

@@ -27,7 +27,7 @@ CREATE TABLE Account (
     UserName VARCHAR(100) NOT NULL UNIQUE,
     Password VARCHAR(255) NOT NULL, -- Thực tế nên dùng PasswordHash và độ dài lớn hơn
     Role VARCHAR(50) NOT NULL,
-    DoB DATE NOT NULL,
+    DoB DATE NULL,
     CreatedAt DATETIME DEFAULT GETDATE(),
     CONSTRAINT CHK_Account_Role CHECK (Role IN ('Customer', 'Employee', 'Admin')),
     CONSTRAINT CHK_Account_Age CHECK (DATEDIFF(YEAR, DoB, GETDATE()) >= 18),
@@ -51,10 +51,10 @@ GO
 -- 1.3 Customer (Lớp con)
 CREATE TABLE Customer (
     UserID INT PRIMARY KEY,
-    Street VARCHAR(255),
-    Ward VARCHAR(100),
-    District VARCHAR(100),
-    City VARCHAR(100),
+    Street NVARCHAR(255),
+    Ward NVARCHAR(100),
+    District NVARCHAR(100),
+    City NVARCHAR(100),
     FOREIGN KEY (UserID) REFERENCES Account(UserID) ON DELETE CASCADE
 );
 GO
@@ -387,3 +387,4 @@ ALTER TABLE [Order] ADD PaymentStatus NVARCHAR(50) DEFAULT 'Unpaid';
 
 ALTER TABLE [Order] ADD ShippingFee DECIMAL(18,2) DEFAULT 0;
 ALTER TABLE [Order] ADD UnitID INT; -- Để biết khách chọn ship nào
+

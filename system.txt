@@ -1,31 +1,65 @@
-/uniqlo-ecommerce-app
-├── /BE (Backend - Node.js/Express)
+/Assignment_2(uniqlo-ecommerce-app)) 
+├── /uniqlo-backend
 │   ├── /config
 │   │   └── db.js         // Cấu hình kết nối SQL Server
 │   ├── /controllers
+│   │   └── authController.js    // Xử lý logic đăng nhập, đăng ký
+│   │   └── cartController.js    // Xử lý logic giỏ hàng
 │   │   └── productController.js // Controller cho CRUD sản phẩm (3.1)
 │   │   └── reportController.js  // Controller cho báo cáo/truy vấn (3.2, 3.3)
+│   ├── /database
+│   │   └── create.sql           // Script tạo các bảng dữ liệu (Tables)
+│   │   └── procedure.sql        // Script tạo thủ tục lưu trữ (Stored Procedures)
+│   │   └── sample_data.sql      // Dữ liệu mẫu để test hệ thống
+│   │   └── trigger.sql          // Script tạo các Trigger tự động
+│   ├── /node_modules
 │   ├── /routes
+│   │   └── authRoutes.js        // Định tuyến API cho xác thực (Login/Register)
+│   │   └── cartRoutes.js        // Định tuyến API cho chức năng giỏ hàng
 │   │   └── productRoutes.js     // Định tuyến API cho CRUD
 │   │   └── reportRoutes.js      // Định tuyến API cho báo cáo
-│   ├── server.js           // Điểm khởi chạy ứng dụng
-│   └── package.json
-├── /FE (Frontend - React/TypeScript/SCSS)
+│   ├── .env              // Biến môi trường (chứa mật khẩu, port, cấu hình nhạy cảm)
+│   └── package.json      // Khai báo các thư viện cài đặt và thông tin dự án
+│   ├── server.js         // Điểm khởi chạy ứng dụng
+├── /uniqlo-frontend
+│   ├── /node_modules
+│   ├── /public
+│   │   ├── /images       // Hình ảnh đại diện cho từng mặt hàng
+│   │   ├── /screenshot   // Ảnh chụp màn hình trang web
+│   │   ├── vite.svg
 │   ├── /src
 │   │   ├── /api
-│   │   │   └── api.ts             // Hàm gọi API
+│   │   │   └── api.ts                       // Hàm gọi API
+│   │   ├── /assets
 │   │   ├── /components
+│   │   │   ├── /admin
+│   │   │   │   └── EmployeeManager.tsx      // Giao diện quản lý nhân viên
+│   │   │   ├── /auth
+│   │   │   │   └── LoginPage.scss
+│   │   │   │   └── LoginPage.tsx            // Trang đăng nhập
+│   │   │   │   └── RegisterPage.tsx         // Trang đăng ký tài khoản mới
+│   │   │   │   └── UserProfilePage.tsx      // Trang xem và sửa thông tin cá nhân
+│   │   │   ├── /cart
+│   │   │   │   └── CartPage.tsx             // Trang hiển thị chi tiết giỏ hàng
 │   │   │   ├── /common
-│   │   │   │   └── DataTable.tsx   // Component bảng hiển thị
-│   │   │   │   └── Paginator.tsx   // Component phân trang
+│   │   │   │   └── ConfirmModal.tsx         // Hộp thoại xác nhận (Ví dụ: Bạn có chắc muốn xóa?)
+│   │   │   │   └── DataTable.tsx            // Component bảng hiển thị
+│   │   │   │   └── Paginator.tsx            // Component phân trang
+│   │   │   │   └── Toast.tsx                // Thông báo nổi (Ví dụ: Đăng nhập thành công)
+│   │   │   ├── /guest
+│   │   │   │   └── GuestHome.tsx            // Trang chủ dành cho khách vãng lai
 │   │   │   ├── /products
-│   │   │   │   ├── ProductList.tsx // Danh sách/CRUD sản phẩm (3.1)
-│   │   │   │   └── ProductForm.tsx // Form thêm/sửa sản phẩm
+│   │   │   │   └── ProductForm.tsx          // Form để thêm mới hoặc chỉnh sửa sản phẩm
+│   │   │   │   └── ProductList.tsx          // Danh sách hiển thị các sản phẩm
+│   │   │   │   └── ProductVariantModal.tsx  // Hộp thoại chọn biến thể (Màu, Size) của sản phẩm
 │   │   │   ├── /reports
 │   │   │   │   ├── CustomerOrdersReport.tsx // Báo cáo Đơn hàng Khách hàng (3.2)
 │   │   │   │   └── StoreInventoryReport.tsx // Báo cáo Tồn kho (3.3 - Hàm/Truy vấn khác)
 │   │   ├── /styles
-│   │   │   ├── _variables.scss
+│   │   │   ├── _variables.scss              // Khai báo biến màu sắc, font chữ dùng chung
+│   │   │   └── Components.scss              // Style chung cho các components           
+│   │   │   └── layout.scss                  // Style chung tổng quan trang web
 │   │   │   └── main.scss
-│   │   └── App.tsx
+│   │   └── App.tsx       // Component gốc, cấu hình điều hướng trang (Router)
+│   └── .env
 │   └── package.json

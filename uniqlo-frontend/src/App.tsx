@@ -229,7 +229,7 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefres
     }
     setCartCount(count);
   };
-  
+              
   // useEffect để lắng nghe sự kiện
   useEffect(() => {
     updateCount();

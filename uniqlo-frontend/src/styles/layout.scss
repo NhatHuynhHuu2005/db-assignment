@@ -543,3 +543,18 @@ $shadow-lg: 0 20px 60px rgba(0,0,0,0.1);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   }
 }
+
+.form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s;
+
+    &:focus {
+        border-color: #e00000;
+        box-shadow: 0 0 0 2px rgba(224, 0, 0, 0.1);
+    }
+}

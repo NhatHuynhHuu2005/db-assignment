@@ -14,13 +14,16 @@ AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
-        -- Validation 1: Tên sản phẩm không được rỗng
         IF @ProductName IS NULL OR LTRIM(RTRIM(@ProductName)) = ''
             THROW 50001, N'Lỗi: Tên sản phẩm không được để trống.', 1;
 
-        -- Validation 2: EmployeeID phải tồn tại và là Employee/Admin
-        IF NOT EXISTS (SELECT 1 FROM Employee e JOIN Account a ON e.UserID = a.UserID WHERE e.UserID = @EmployeeID AND a.Role IN ('Employee', 'Admin'))
-            THROW 50002, N'Lỗi: Người phụ trách (EmployeeID) không tồn tại hoặc không có vai trò hợp lệ (Employee/Admin).', 1;
+        IF NOT EXISTS (
+                SELECT 1 
+                FROM Employee e 
+                JOIN Account a ON e.UserID = a.UserID 
+                WHERE e.UserID = @EmployeeID AND a.Role IN ('Employee', 'Admin')
+        )
+            THROW 50002, N'Lỗi: EmployeeID không hợp lệ (phải thuộc Employee/Admin).', 1;
 
         INSERT INTO [Product] (ProductName, Description, EmployeeID)
         VALUES (@ProductName, @Description, @EmployeeID);
@@ -43,17 +46,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
-        -- Validation 1: ProductID phải tồn tại
         IF NOT EXISTS (SELECT 1 FROM [Product] WHERE ProductID = @ProductID)
             THROW 50011, N'Lỗi: ProductID không tồn tại.', 1;
 
-        -- Validation 2: Tên sản phẩm (nếu được cung cấp) không được rỗng
         IF @ProductName IS NOT NULL AND LTRIM(RTRIM(@ProductName)) = ''
             THROW 50012, N'Lỗi: Tên sản phẩm không được để trống.', 1;
 
-        -- Validation 3: EmployeeID (nếu được cung cấp) phải tồn tại và là Employee/Admin
-        IF @EmployeeID IS NOT NULL AND NOT EXISTS (SELECT 1 FROM Employee e JOIN Account a ON e.UserID = a.UserID WHERE e.UserID = @EmployeeID AND a.Role IN ('Employee', 'Admin'))
-            THROW 50013, N'Lỗi: Người phụ trách (EmployeeID) không tồn tại hoặc không có vai trò hợp lệ (Employee/Admin).', 1;
+        IF @EmployeeID IS NOT NULL 
+            AND NOT EXISTS (
+                    SELECT 1 FROM Employee e JOIN Account a ON e.UserID = a.UserID 
+                    WHERE e.UserID = @EmployeeID AND a.Role IN ('Employee', 'Admin')
+            )
+            THROW 50013, N'Lỗi: EmployeeID không hợp lệ.', 1;
 
         UPDATE [Product]
         SET
@@ -70,22 +74,24 @@ BEGIN
 END;
 GO
 
+
 -- 1.3. Xóa (DELETE) Product có Validation
-CREATE PROCEDURE sp_Delete_Product
+CREATE OR ALTER PROCEDURE sp_Delete_Product
     @ProductID INT
 AS
 BEGIN
     SET NOCOUNT ON;
+
     BEGIN TRY
-        -- Validation: ProductID phải tồn tại
         IF NOT EXISTS (SELECT 1 FROM [Product] WHERE ProductID = @ProductID)
             THROW 50021, N'Lỗi: ProductID không tồn tại.', 1;
 
-        -- Quy tắc xóa: Không được xóa nếu sản phẩm đã có trong bất kỳ OrderItem nào (nghiệp vụ: đảm bảo tính toàn vẹn lịch sử giao dịch)
         IF EXISTS (SELECT 1 FROM OrderItem WHERE ProductID = @ProductID)
-            THROW 50022, N'Lỗi: Không thể xóa sản phẩm vì nó đã tồn tại trong các đơn hàng đã đặt (OrderItem).', 1;
+            THROW 50022, N'Lỗi: Không thể xóa sản phẩm vì đã tồn tại trong OrderItem.', 1;
 
-        -- Xóa sản phẩm (DELETE CASCADE sẽ tự động xóa ProductVariant, ProductVariant_ImageURL, Belongs_To, Applied)
+        IF EXISTS (SELECT 1 FROM Has_Stock WHERE ProductID = @ProductID)
+            THROW 50023, N'Lỗi: Không thể xóa sản phẩm vì đang có tồn kho tại các cửa hàng (Has_Stock).', 1;
+
         DELETE FROM [Product] WHERE ProductID = @ProductID;
 
         PRINT N'Xóa sản phẩm thành công.';
@@ -96,17 +102,18 @@ BEGIN
 END;
 GO
 
--- 2. THỦ TỤC TRUY VẤN DỮ LIỆU (BTL2 - 2.3)
+
+
+-- 2. THỦ TỤC TRUY VẤN DỮ LIỆU
 
 -- 2.1. Thủ tục 1: Truy vấn từ 2 bảng trở lên (Lấy thông tin đơn hàng đang Giao/Chờ xử lý của một Khách hàng)
-CREATE PROCEDURE sp_Get_Customer_Pending_Orders
+CREATE OR ALTER PROCEDURE sp_Get_Customer_Pending_Orders
     @CustomerID INT = NULL,
-    @StatusList NVARCHAR(MAX) -- Ví dụ: 'Pending,Shipping'
+    @StatusList NVARCHAR(MAX)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Kiểm tra CustomerID
     IF NOT EXISTS (SELECT 1 FROM Customer WHERE UserID = @CustomerID)
     BEGIN
         RAISERROR(N'Lỗi: CustomerID không tồn tại.', 16, 1);
@@ -122,7 +129,7 @@ BEGIN
         O.Address,
         A.UserName,
         A.UserID
-    FROM [Order] O
+    FROM Orders O
     INNER JOIN Account A ON O.CustomerID = A.UserID
     OUTER APPLY (
         SELECT TOP 1 sh.TrackingCode, sh.UnitID 
@@ -138,8 +145,9 @@ BEGIN
 END;
 GO
 
+
 -- 2.2. Thủ tục 2: Truy vấn có Aggregate Function, GROUP BY, HAVING (Báo cáo tồn kho cao)
-CREATE PROCEDURE sp_Report_Store_Inventory_HighVolume
+CREATE OR ALTER PROCEDURE sp_Report_Store_Inventory_HighVolume
     @MinTotalItems INT,
     @StoreNameKeyword NVARCHAR(100) = NULL
 AS
@@ -150,16 +158,17 @@ BEGIN
         ST.StoreName,
         ST.Address,
         COUNT(HS.VariantID) AS SKU_Count,
-        SUM(HS.Quantity) AS TotalItems -- Aggregate Function
+        SUM(HS.Quantity) AS TotalItems
     FROM Store ST
     INNER JOIN Has_Stock HS ON ST.StoreID = HS.StoreID
     WHERE
-        (@StoreNameKeyword IS NULL OR ST.StoreName LIKE '%' + @StoreNameKeyword + '%') -- Mệnh đề WHERE (sử dụng tham số)
-    GROUP BY ST.StoreName, ST.Address -- Mệnh đề GROUP BY
-    HAVING SUM(HS.Quantity) > @MinTotalItems -- Mệnh đề HAVING (sử dụng tham số)
-    ORDER BY TotalItems DESC; -- Mệnh đề ORDER BY
+        (@StoreNameKeyword IS NULL OR ST.StoreName LIKE '%' + @StoreNameKeyword + '%')
+    GROUP BY ST.StoreName, ST.Address
+    HAVING SUM(HS.Quantity) > @MinTotalItems
+    ORDER BY TotalItems DESC;
 END;
 GO
+
 
 -- 3. HÀM (FUNCTIONS) (BTL2 - 2.4)
 
@@ -235,32 +244,6 @@ BEGIN
     RETURN;
 END;
 GO
-
--- =====================================================
--- CÂU LỆNH MINH HỌA GỌI HÀM VÀ THỦ TỤC
--- =====================================================
-
--- Minh họa gọi sp_Insert_Product (Thành công)
--- EXEC sp_Insert_Product @ProductName = N'Quần Vải Dáng Rộng', @EmployeeID = 3;
-
--- Minh họa gọi sp_Update_Product (Thành công)
--- EXEC sp_Update_Product @ProductID = 1007, @ProductName = N'Áo Giữ Nhiệt HEATTECH Pro';
-
--- Minh họa gọi sp_Delete_Product (Thất bại vì nằm trong OrderItem)
--- EXEC sp_Delete_Product @ProductID = 1000; 
-
--- Minh họa gọi sp_Get_Customer_Pending_Orders
--- EXEC sp_Get_Customer_Pending_Orders @CustomerID = 9, @StatusList = 'Pending,Shipping'; 
-
--- Minh họa gọi sp_Report_Store_Inventory_HighVolume
--- EXEC sp_Report_Store_Inventory_HighVolume @MinTotalItems = 500, @StoreNameKeyword = 'Kho'; 
-
--- Minh họa gọi fn_Calculate_Shipping_Fee
--- SELECT dbo.fn_Calculate_Shipping_Fee(3) AS GrabExpressFee;
-
--- Minh họa gọi fn_Get_Low_Stock_Products_ByStore
--- SELECT * FROM dbo.fn_Get_Low_Stock_Products_ByStore(10, 50); -- Cửa hàng Đồng Khởi, Threshold 50
--- SELECT * FROM dbo.fn_Get_Low_Stock_Products_ByStore(13, 5); -- Cửa hàng Bà Triệu, Threshold 5
 
 -- Thủ tục thêm, sửa, xoá nhân viên
 
@@ -448,3 +431,137 @@ BEGIN
     END CATCH
 END;
 GO
+
+--
+-- Hàm
+--
+
+--Hàm 1
+CREATE OR ALTER FUNCTION fn_Get_FinalPrice_WithPromotion
+(
+    @ProductID INT,
+    @VariantID INT,
+    @PromoID INT,
+    @RuleID INT
+)
+RETURNS DECIMAL(18, 2)
+AS
+BEGIN
+    DECLARE @BasePrice DECIMAL(18,2);
+    DECLARE @FinalPrice DECIMAL(18,2);
+    DECLARE @RuleType NVARCHAR(50);
+    DECLARE @RewardValue DECIMAL(18,2);
+
+    SELECT @BasePrice = Price
+    FROM ProductVariant
+    WHERE ProductID = @ProductID AND VariantID = @VariantID;
+
+    IF @BasePrice IS NULL
+        RETURN NULL;
+
+    SELECT 
+        @RuleType = RuleType,
+        @RewardValue = RewardValue
+    FROM PromotionRule
+    WHERE PromoID = @PromoID AND RuleID = @RuleID;
+
+    IF @RuleType IS NULL   -- Không có khuyến mãi
+        RETURN @BasePrice;
+
+    IF @RuleType = 'Percentage'
+        SET @FinalPrice = @BasePrice * (1 - @RewardValue / 100);
+    ELSE IF @RuleType = 'FixedAmount'
+        SET @FinalPrice = @BasePrice - @RewardValue;
+    ELSE
+        SET @FinalPrice = @BasePrice;
+
+    RETURN @FinalPrice;
+END;
+GO
+
+
+-- Hàm 2
+CREATE OR ALTER FUNCTION fn_Get_TotalStock_Of_Store
+(
+    @StoreID INT
+)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Total INT;
+
+    SELECT @Total = SUM(Quantity)
+    FROM Has_Stock
+    WHERE StoreID = @StoreID;
+
+    RETURN ISNULL(@Total, 0);
+END;
+GO
+
+
+
+-- =====================================================
+-- CÂU LỆNH MINH HỌA GỌI HÀM VÀ THỦ TỤC
+-- =====================================================
+--Insert
+--Các câu lệnh test lỗi
+-- EXEC sp_Insert_Product @ProductName = '', @EmployeeID = 3;
+-- EXEC sp_Insert_Product @ProductName = N'Áo Khoác UNIQLO', @EmployeeID = 9999;
+
+-- Câu lệnh test đúng
+-- EXEC sp_Insert_Product @ProductName = N'Áo UNIQLO AIRism', @Description = N'Mẫu mới 2025', @EmployeeID = 2;
+
+--Update
+--Câu lệnh test lỗi
+-- EXEC sp_Update_Product @ProductID = 9999, @ProductName = N'Áo ABC';
+-- → ProductID không tồn tại
+
+-- Câu lệnh test đúng
+-- EXEC sp_Update_Product @ProductID = 1007, @ProductName = N'Áo Giữ Nhiệt HEATTECH';
+
+--Delete
+--Câu lệnh test lỗi
+-- EXEC sp_Delete_Product @ProductID = 1000;
+-- → Lỗi: Sản phẩm đã tồn tại trong OrderItem
+
+-- Câu lệnh test đúng
+
+-- INSERT INTO Product (ProductName, Description, EmployeeID)
+-- VALUES ('Sản phẩm test xoá', 'Dùng để test DELETE', 1);
+
+-- SELECT SCOPE_IDENTITY() AS NewProductID;
+
+-- EXEC sp_Delete_Product @ProductID = 1015;
+
+
+-- Test thủ tục
+-- Thủ tục 1
+-- Câu lệnh lỗi
+-- EXEC sp_Get_Customer_Pending_Orders @CustomerID = 9999, @StatusList = 'Pending';
+
+-- Câu lệnh đúng
+-- EXEC sp_Get_Customer_Pending_Orders @CustomerID = 9,@StatusList = 'Pending,Shipping';
+
+-- Thủ tục 2
+-- Câu lệnh lỗi
+-- EXEC sp_Report_Store_Inventory_HighVolume @MinTotalItems = 'abc';
+
+-- Câu lệnh đúng
+-- EXEC sp_Report_Store_Inventory_HighVolume @MinTotalItems = 200, @StoreNameKeyword = NULL;
+
+
+-- Testcase Hàm
+-- Hàm 1
+-- Testcase đúng
+-- SELECT dbo.fn_Get_FinalPrice_WithPromotion(1000, 1, 1, 1);
+
+-- Testcase không có khuyến mãi
+-- SELECT dbo.fn_Get_FinalPrice_WithPromotion(1003, 1, 999, 999);
+
+-- Hàm 1
+-- Testcase đúng
+-- SELECT dbo.fn_Get_TotalStock_Of_Store(15);
+
+-- Testcase store ko tồn tại
+-- SELECT dbo.fn_Get_TotalStock_Of_Store(999);
+

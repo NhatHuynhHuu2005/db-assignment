@@ -226,6 +226,7 @@ BEGIN
 END;
 GO
 
+
 -- Trigger kiểm tra tồn kho khi thêm/sửa OrderItem
 CREATE OR ALTER TRIGGER trg_CheckStock_OnOrderItem
 ON OrderItem

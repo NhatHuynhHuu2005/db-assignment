@@ -95,6 +95,17 @@ export interface RegisterPayload {
   dob: string; // YYYY-MM-DD
 }
 
+export interface UpdateProfilePayload {
+    userId: number;
+    email: string;
+    phone: string;
+    dob: string;      // YYYY-MM-DD
+    street: string;
+    ward: string;
+    district: string;
+    city: string;
+}
+
 // ===== Product APIs =====
 
 export async function fetchProducts(params?: {
@@ -332,4 +343,8 @@ export async function removeFromCart(userId: number, productId: number, variantI
 export async function fetchUserProfile(userId: number): Promise<UserInfo> {
   const response = await api.get('/auth/profile', { params: { userId } });
   return response.data;
+}
+
+export async function updateUserProfile(payload: UpdateProfilePayload): Promise<void> {
+    await api.put('/auth/profile/update', payload);
 }
