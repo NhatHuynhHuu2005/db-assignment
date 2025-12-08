@@ -109,10 +109,7 @@ export const login = async (req, res) => {
   }
 };
 
-// --- API 3: ĐĂNG KÝ (Giữ nguyên logic cũ) ---
 export const register = async (req, res) => {
-    // ... (Giữ nguyên code register của bạn, hoặc copy lại nếu cần)
-    // Để ngắn gọn mình không paste lại đoạn register trừ khi bạn yêu cầu
     const { username, password, email, phone, dob, role } = req.body; 
     const userRole = role || 'Customer';
     try {
@@ -156,7 +153,6 @@ export const register = async (req, res) => {
     }
 };
 
-// --- API 4: CẬP NHẬT PROFILE (BẢN FIX LỖI 500) ---
 export const updateProfile = async (req, res) => {
     console.log("📥 Nhận request Update Profile:", req.body); // Log dữ liệu nhận được
 

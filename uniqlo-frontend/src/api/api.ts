@@ -16,6 +16,13 @@ export interface Product {
   id: number;
   name: string;
   price?: number;
+  finalPrice?: number;
+  promoDetails?: {
+      name: string;
+      type: string;
+      value: number;
+  } | null;
+  imageUrl?: string;
   description?: string;
   employeeId?: number;
   categories: string[];
@@ -49,6 +56,47 @@ export interface ProductPayload {
   categoryIds?: number[];
 }
 
+export interface Promotion {
+    id: number;
+    name: string;
+    startDate: string;
+    endDate: string;
+    ruleType: 'Percentage' | 'FixedAmount' | 'Buy1Get1';
+    rewardValue: number;
+    appliedCount: number;
+    voucherCode?: string | null;
+}
+
+export interface PromotionRulePayload {
+    ruleId?: number;
+    type: 'Percentage' | 'FixedAmount' | 'Buy1Get1';
+    value: number;
+}
+
+export interface PromotionPayload {
+    name: string;
+    startDate: string;
+    endDate: string;
+    employeeId: number;
+    rules: PromotionRulePayload[];
+    voucherCode?: string;
+}
+
+export interface PromotionDetail extends Promotion {
+    rules: {
+        ruleId: number;
+        ruleType: 'Percentage' | 'FixedAmount' | 'Buy1Get1';
+        rewardValue: number;
+    }[];
+}
+
+export interface VoucherValidationResult {
+    valid: boolean;
+    promoId: number;
+    name: string;
+    ruleType: 'Percentage' | 'FixedAmount' | 'Buy1Get1';
+    rewardValue: number;
+}
 export interface CustomerOrderRow {
   orderId: number;
   orderDate: string;
@@ -347,4 +395,34 @@ export async function fetchUserProfile(userId: number): Promise<UserInfo> {
 
 export async function updateUserProfile(payload: UpdateProfilePayload): Promise<void> {
     await api.put('/auth/profile/update', payload);
+}
+
+// --- API FUNCTIONS Promotions ---
+
+export async function fetchPromotions(search?: string): Promise<Promotion[]> {
+    const response = await api.get<Promotion[]>('/promotions', { params: { search } });
+    return response.data;
+}
+
+export async function fetchPromotionById(id: number): Promise<PromotionDetail> {
+    const response = await api.get<PromotionDetail>(`/promotions/${id}`);
+    return response.data;
+}
+
+export async function createPromotion(payload: PromotionPayload): Promise<void> {
+    await api.post('/promotions', payload);
+}
+
+export async function updatePromotion(id: number, payload: PromotionPayload): Promise<void> {
+    await api.put(`/promotions/${id}`, payload);
+}
+
+export async function deletePromotion(id: number): Promise<void> {
+    await api.delete(`/promotions/${id}`);
+}
+
+export async function validateVoucher(code: string): Promise<VoucherValidationResult> {
+    // Gọi đến API: POST /api/promotions/validate
+    const response = await api.post<VoucherValidationResult>('/promotions/validate', { code });
+    return response.data;
 }

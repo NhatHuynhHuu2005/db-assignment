@@ -129,7 +129,7 @@ BEGIN
         O.Address,
         A.UserName,
         A.UserID
-    FROM Orders O
+    FROM [Order] O
     INNER JOIN Account A ON O.CustomerID = A.UserID
     OUTER APPLY (
         SELECT TOP 1 sh.TrackingCode, sh.UnitID 

@@ -19,7 +19,8 @@ server: process.env.DB_SERVER || '127.0.0.1', // Sửa từ '127.0.0.1' sang tê
   options: {
     encrypt: false, 
     trustServerCertificate: true,
-    enableArithAbort: true // Thêm dòng này giúp ổn định query
+    enableArithAbort: true, // Thêm dòng này giúp ổn định query
+    useUTC: false
   },
   pool: {
     max: 10,

@@ -11,6 +11,7 @@ import { RegisterPage } from './components/auth/RegisterPage';
 import { UserProfilePage } from './components/auth/UserProfilePage';
 import { type UserInfo, syncGuestCartToUser, clearGuestCart, CART_EVENT, getGuestCart, fetchCart, fetchUserProfile } from './api/api'; //
 import { EmployeeManager } from './components/admin/EmployeeManager';
+import { PromotionManager } from './components/admin/PromotionManager';
 
 // --- COMPONENT BUYER HOME ---
 const BuyerHome: React.FC = () => {
@@ -284,6 +285,7 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefres
               <>
                 <NavLink to="/products" className={({isActive}) => isActive ? "active" : ""}>QL Sản phẩm</NavLink>
                 <NavLink to="/reports/customer-orders" className={({isActive}) => isActive ? "active" : ""}>QL Đơn hàng</NavLink>
+                <NavLink to="/admin/promotions" className={({isActive}) => isActive ? "active" : ""}>QL Khuyến mãi</NavLink>
                 <NavLink to="/reports/store-inventory" className={({isActive}) => isActive ? "active" : ""}>QL Tồn kho</NavLink>
               </>
             )}
@@ -410,6 +412,7 @@ const AppShell: React.FC<{ user: UserInfo | null, onLogout: () => void, onRefres
               <Route path="/reports/customer-orders" element={<CustomerOrdersReport role="seller" />} />
               <Route path="/reports/store-inventory" element={<StoreInventoryReport />} />
               <Route path="/admin/employees" element={<EmployeeManager />} />
+              <Route path="/admin/promotions" element={<PromotionManager />} />
               <Route path="/" element={<Navigate to="/products" />} />
             </>
           )}

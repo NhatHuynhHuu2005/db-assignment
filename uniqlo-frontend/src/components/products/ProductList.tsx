@@ -41,57 +41,116 @@ const PRODUCT_IMAGES: Record<string, string> = {
 // Đã hợp nhất: Dùng logic Modal (HEAD) nhưng lấy giao diện Ảnh đẹp (Remote)
 const ProductCard: React.FC<{ product: Product; onOpenModal: (p: Product) => void }> = ({ product, onOpenModal }) => {
     
-    // Lấy đường dẫn ảnh từ code Remote
+    // Logic lấy ảnh (như cũ)
     const imageName = PRODUCT_IMAGES[product.name];
-    const imageUrl = imageName ? `/images/${imageName}` : 'https://placehold.co/300x400?text=No+Image';
+    const imageUrl = imageName ? `/images/${imageName}` : (product.imageUrl || 'https://placehold.co/300x400?text=No+Image');
+
+    // --- LOGIC HIỂN THỊ BADGE KHUYẾN MÃI ---
+    const renderPromoBadge = () => {
+        if (!product.promoDetails) return null;
+        
+        const { type, value } = product.promoDetails;
+
+        if (type === 'Buy1Get1') {
+            return (
+                <div style={{
+                    position: 'absolute', top: 10, left: 10,
+                    background: 'linear-gradient(45deg, #ff007f, #ff5e62)',
+                    color: 'white', padding: '4px 8px', borderRadius: '4px',
+                    fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                }}>
+                    🎁 MUA 1 TẶNG 1
+                </div>
+            );
+        }
+        
+        // Nếu giảm theo %
+        if (type === 'Percentage') {
+            return (
+                <div style={{
+                    position: 'absolute', top: 10, right: 10,
+                    background: '#e00000', color: 'white',
+                    width: 40, height: 40, borderRadius: '50%',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                }}>
+                    <span>-{value}%</span>
+                </div>
+            );
+        }
+
+        // Nếu giảm tiền mặt
+        if (type === 'FixedAmount') {
+             return (
+                <div style={{
+                    position: 'absolute', top: 10, right: 10,
+                    background: '#e00000', color: 'white',
+                    padding: '4px 8px', borderRadius: '20px',
+                    fontSize: '0.75rem', fontWeight: 'bold'
+                }}>
+                    -{value.toLocaleString()}₫
+                </div>
+            );
+        }
+    };
 
     return (
-        <div className="product-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* --- PHẦN HÌNH ẢNH (Lấy từ Remote) --- */}
-            <div style={{ 
-                width: '100%', 
-                height: '320px', 
-                marginBottom: '15px', 
-                borderRadius: '8px', 
-                overflow: 'hidden',
-                backgroundColor: '#f5f5f5',
-                position: 'relative'
-            }}>
+        <div className="product-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+            {/* 1. HIỆN BADGE PROMO */}
+            {renderPromoBadge()}
+
+            {/* 2. ẢNH SẢN PHẨM */}
+            <div style={{ width: '100%', height: '320px', marginBottom: '15px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
                 <img 
                     src={imageUrl} 
                     alt={product.name} 
-                    style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'cover', 
-                        objectPosition: 'top center',
-                        display: 'block',
-                        transition: 'transform 0.3s ease'
-                    }} 
-                    onError={(e) => {
-                        e.currentTarget.src = 'https://placehold.co/300x400?text=Image+Error';
-                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} 
                     onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                     onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    onError={(e) => { e.currentTarget.src = 'https://placehold.co/300x400?text=No+Image'; }}
                 />
             </div>
 
+            {/* 3. THÔNG TIN & GIÁ */}
             <div style={{ flex: 1 }}>
+                {/* Tên chương trình khuyến mãi (Nếu có) */}
+                {product.promoDetails && (
+                    <div style={{
+                        display: 'inline-block', background: '#fff0f0', color: '#e00000', 
+                        fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', marginBottom: 5,
+                        border: '1px solid #ffcccc', fontWeight: 600
+                    }}>
+                        🔥 {product.promoDetails.name}
+                    </div>
+                )}
+
                 <h3 className="product-card__name" style={{ fontSize: '1.1rem', marginBottom: '8px', lineHeight: '1.4' }}>{product.name}</h3>
-                <div className="product-card__price" style={{ color: '#e00000', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
-                    {product.price ? product.price.toLocaleString('vi-VN') + ' ₫' : 'Liên hệ'}
+                
+                <div className="product-card__price" style={{ marginBottom: '8px' }}>
+                    {product.finalPrice && product.price && product.finalPrice < product.price ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ color: '#e00000', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                                {product.finalPrice.toLocaleString('vi-VN')} ₫
+                            </span>
+                            <span style={{ color: '#999', textDecoration: 'line-through', fontSize: '0.9rem' }}>
+                                {product.price.toLocaleString('vi-VN')} ₫
+                            </span>
+                        </div>
+                    ) : (
+                        <span style={{ color: '#333', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                            {product.price ? product.price.toLocaleString('vi-VN') + ' ₫' : 'Liên hệ'}
+                        </span>
+                    )}
                 </div>
+                
                 <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '16px' }}>
                     #{product.categories?.join(', #') || 'general'}
                 </div>
             </div>
 
-            {/* --- NÚT CHỨC NĂNG (Giữ logic Modal từ HEAD) --- */}
+            {/* Nút giỏ hàng */}
             <div style={{ marginTop: 'auto', paddingTop: 15, display: 'flex', justifyContent: 'center' }}>
-                <button 
-                    className="btn-add-cart-mini"  // <-- Dùng class mới
-                    onClick={() => onOpenModal(product)} 
-                >
+                <button className="btn-add-cart-mini" onClick={() => onOpenModal(product)}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <span>Thêm vào giỏ</span>
                 </button>
@@ -99,7 +158,6 @@ const ProductCard: React.FC<{ product: Product; onOpenModal: (p: Product) => voi
         </div>
     );
 };
-
 // --- 2. COMPONENT CHÍNH: DANH SÁCH SẢN PHẨM ---
 interface ProductListProps {
   role?: string;       

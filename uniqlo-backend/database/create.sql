@@ -247,6 +247,7 @@ CREATE TABLE Promotion (
     StartDate DATETIME NOT NULL,
     EndDate DATETIME NOT NULL,
     EmployeeID INT NOT NULL, -- Người tạo/quản lý khuyến mãi
+    VoucherCode VARCHAR(20) NULL,
     CONSTRAINT CK_Promotion_Dates CHECK (StartDate <= EndDate),
     FOREIGN KEY (EmployeeID) REFERENCES Employee(UserID)
 );
@@ -387,4 +388,3 @@ ALTER TABLE [Order] ADD PaymentStatus NVARCHAR(50) DEFAULT 'Unpaid';
 
 ALTER TABLE [Order] ADD ShippingFee DECIMAL(18,2) DEFAULT 0;
 ALTER TABLE [Order] ADD UnitID INT; -- Để biết khách chọn ship nào
-

@@ -38,15 +38,15 @@ INSERT INTO User_PhoneNumber (UserID, PhoneNumber) VALUES
 
 -- Dữ liệu Customer
 INSERT INTO Customer (UserID, Street, Ward, District, City) VALUES
-(9, '123 Nguyễn Huệ', 'Phường Bến Nghé', 'Quận 1', 'TP. Hồ Chí Minh'),
-(10, '456 Lê Lợi', 'Phường Bến Thành', 'Quận 1', 'TP. Hồ Chí Minh'),
-(11, '789 Trần Hưng Đạo', 'Phường Cầu Ông Lãnh', 'Quận 1', 'TP. Hồ Chí Minh'),
-(12, '321 Võ Văn Tần', 'Phường 6', 'Quận 3', 'TP. Hồ Chí Minh'),
-(13, '123 Lê Lợi', 'Q1', 'TP.HCM', 'TP. Hồ Chí Minh'), -- khach_a
-(14, '45 Cầu Giấy', 'Dịch Vọng', 'Cầu Giấy', 'Hà Nội'), -- khach_b
-(15, '12 Nguyễn Văn Linh', 'Hòa Thuận', 'Hải Châu', 'Đà Nẵng'), -- khach_c
-(16, 'Khu phố 3', 'Long Bình', 'Biên Hòa', 'Đồng Nai'), -- khach_d
-(17, 'Số 5 Hùng Vương', 'Ninh Kiều', 'Ninh Kiều', 'Cần Thơ'); -- khach_e
+(9, N'123 Nguyễn Huệ', N'Phường Bến Nghé', N'Quận 1', N'TP. Hồ Chí Minh'),
+(10, N'456 Lê Lợi', N'Phường Bến Thành', N'Quận 1', N'TP. Hồ Chí Minh'),
+(11, N'789 Trần Hưng Đạo', N'Phường Cầu Ông Lãnh', N'Quận 1', N'TP. Hồ Chí Minh'),
+(12, N'321 Võ Văn Tần', N'Phường 6', N'Quận 3', N'TP. Hồ Chí Minh'),
+(13, N'123 Lê Lợi', N'Q1', N'TP.HCM', N'TP. Hồ Chí Minh'), --- khach a
+(14, N'45 Cầu Giấy', N'Dịch Vọng', N'Cầu Giấy', N'Hà Nội'), --- khach b
+(15, N'12 Nguyễn Văn Linh', N'Hòa Thuận', N'Hải Châu', N'Đà Nẵng'), --- khach c
+(16, N'Khu phố 3', N'Long Bình', N'Biên Hòa', N'Đồng Nai'), --- khach d
+(17, N'Số 5 Hùng Vương', N'Ninh Kiều', N'Ninh Kiều', N'Cần Thơ'); --- khach e
 
 -- Dữ liệu Employee
 INSERT INTO Employee (UserID, StartDate, Salary) VALUES

@@ -1,25 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// 1. Thêm 'api' vào import và BỎ 'useMemo'
 import api, { 
   fetchCart, 
   getGuestCart, 
   removeFromCart, 
   removeFromGuestCart, 
-  type CartItemData 
+  type CartItemData,
+  validateVoucher // Import hàm này
 } from '../../api/api';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { Toast } from '../common/Toast';
 import '../../styles/Components.scss';
 
-// 1. CẤU HÌNH QUYỀN LỢI THÀNH VIÊN
+// CẤU HÌNH QUYỀN LỢI THÀNH VIÊN
 const TIER_BENEFITS: Record<string, { rate: number; label: string; color: string }> = {
-    'VIP':        { rate: 0.10, label: 'VIP (Giảm 10%)',      color: '#2d3436' }, // Đen
-    'Platinum':   { rate: 0.07, label: 'Platinum (Giảm 7%)', color: '#7f8c8d' }, // Xám đậm hơn chút để rõ chữ
-    'Gold':       { rate: 0.05, label: 'Gold (Giảm 5%)',     color: '#f39c12' }, // Vàng cam đậm để dễ đọc trên nền trắng
-    'Silver':     { rate: 0.03, label: 'Silver (Giảm 3%)',   color: '#7f8c8d' }, // Xám bạc
-    'Bronze':     { rate: 0.01, label: 'Bronze (Giảm 1%)',   color: '#d35400' }, // Đồng
-    'New Member': { rate: 0.00, label: 'Thành viên mới',     color: '#0984e3' }  // Xanh biển
+    'VIP':        { rate: 0.10, label: 'VIP (Giảm 10%)',      color: '#2d3436' },
+    'Platinum':   { rate: 0.07, label: 'Platinum (Giảm 7%)', color: '#7f8c8d' },
+    'Gold':       { rate: 0.05, label: 'Gold (Giảm 5%)',     color: '#f39c12' },
+    'Silver':     { rate: 0.03, label: 'Silver (Giảm 3%)',   color: '#7f8c8d' },
+    'Bronze':     { rate: 0.01, label: 'Bronze (Giảm 1%)',   color: '#d35400' },
+    'New Member': { rate: 0.00, label: 'Thành viên mới',     color: '#0984e3' }
 };
 
 interface CartPageProps {
@@ -39,20 +39,25 @@ export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, u
     title: string;
     message: string;
     onConfirm: () => void;
-  }>({
-    isOpen: false, title: '', message: '', onConfirm: () => {}
-  });
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // State thanh toán
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [shippingFee, setShippingFee] = useState(30000);
   const [shipUnitId, setShipUnitId] = useState(1);
-  const [promoCode, setPromoCode] = useState('');
-  const [discount, setDiscount] = useState(0);
+
+  // --- STATE VOUCHER (ĐÃ SỬA) ---
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
+  const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [voucherError, setVoucherError] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<{
+    code: string;
+    type: 'Percentage' | 'FixedAmount' | 'Buy1Get1';
+    value: number;
+  } | null>(null);
+  // ------------------------------
 
   const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
-
-  // Giả lập lấy hạng thành viên
 
   const loadCart = async () => {
     setLoading(true);
@@ -72,6 +77,41 @@ export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, u
   useEffect(() => {
     loadCart();
   }, [userId]);
+
+  // --- HÀM XỬ LÝ VOUCHER (GỌI API) ---
+  const handleApplyVoucher = async () => {
+      if (!voucherCodeInput.trim()) return;
+      setIsApplyingVoucher(true);
+      setVoucherError('');
+
+      try {
+          const data = await validateVoucher(voucherCodeInput);
+          
+          if (data.valid) {
+              setAppliedVoucher({ 
+                  code: voucherCodeInput, 
+                  type: data.ruleType, 
+                  value: data.rewardValue 
+              });
+              setVoucherCodeInput('');
+              setToast({ msg: `Áp dụng mã ${data.name} thành công!`, type: 'success' });
+          }
+      } catch (error: any) {
+          const msg = error.response?.data?.error || 'Mã giảm giá không hợp lệ';
+          setVoucherError(msg);
+          setToast({ msg: msg, type: 'error' });
+          setAppliedVoucher(null);
+      } finally {
+          setIsApplyingVoucher(false);
+      }
+  };
+
+  const handleRemoveVoucher = () => {
+      setAppliedVoucher(null);
+      setVoucherCodeInput('');
+      setToast({ msg: 'Đã gỡ bỏ mã giảm giá', type: 'success' });
+  };
+  // ------------------------------------
 
   const handleRemoveItem = (productId: number, variantId: number, productName: string) => {
     setConfirmModal({
@@ -93,21 +133,28 @@ export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, u
     });
   };
 
-  const handleApplyPromo = () => {
-      if (promoCode.toUpperCase() === 'SUMMER2025') {
-          setDiscount(50000);
-          setToast({ msg: 'Áp dụng mã SUMMER2025 thành công!', type: 'success' });
-      } else {
-          setToast({ msg: 'Mã giảm giá không hợp lệ', type: 'error' });
-          setDiscount(0);
+  // --- TÍNH TOÁN TIỀN ---
+  const subTotal = cartItems.reduce((sum, item) => sum + ((item.Price || 0) * item.Quantity), 0);
+  
+  // Tính giảm giá Voucher
+  let voucherDiscount = 0;
+  if (appliedVoucher) {
+      if (appliedVoucher.type === 'Percentage') {
+          voucherDiscount = subTotal * (appliedVoucher.value / 100);
+      } else if (appliedVoucher.type === 'FixedAmount') {
+          voucherDiscount = appliedVoucher.value;
       }
-  };
+      // Đảm bảo không giảm quá tổng tiền
+      voucherDiscount = Math.min(voucherDiscount, subTotal);
+  }
 
-  // Tính toán
-  const subTotal = cartItems.reduce((sum, item) => sum + (item.Price * item.Quantity), 0);
+  // Tính giảm giá Thành viên
   const tierInfo = TIER_BENEFITS[userTier] || TIER_BENEFITS['New Member'];
-  const memberDiscountAmount = Math.round(subTotal * tierInfo.rate);
-  const finalTotal = subTotal + shippingFee - discount - memberDiscountAmount;
+  const memberDiscount = Math.round(subTotal * tierInfo.rate);
+
+  // Tổng cuối
+  const finalTotal = subTotal + shippingFee - voucherDiscount - memberDiscount;
+  // ----------------------
 
   const handleCheckout = () => {
     if (!userId) {
@@ -131,33 +178,28 @@ export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, u
         message: `Tổng thanh toán: ${Math.max(0, finalTotal).toLocaleString()}₫.`,
         onConfirm: async () => {
             try {
-                // Payload chứa đầy đủ thông tin để gửi xuống Backend
                 const payload = {
                     userId,
                     paymentMethod,
                     shippingFee,
-                    discountAmount: discount + memberDiscountAmount,
+                    discountAmount: voucherDiscount + memberDiscount,
                     finalTotal,
-                    shipUnitId
+                    shipUnitId,
+                    // Có thể gửi thêm voucherCode để backend lưu lại
+                    voucherCode: appliedVoucher?.code 
                 };
 
-                // 2. SỬA LỖI Ở ĐÂY: Dùng api.post trực tiếp để gửi payload
-                // (Thay vì dùng hàm checkout() cũ không nhận payload)
                 const res = await api.post('/cart/checkout', payload); 
-                
-                // Kết quả trả về từ backend thường nằm trong res.data
                 const orderId = res.data.orderId;
 
                 setToast({ msg: `Đặt hàng thành công! Mã đơn: #${orderId}`, type: 'success' });
                 await loadCart();
-                setDiscount(0);
-                setPromoCode('');
+                setAppliedVoucher(null); // Reset voucher
 
                 if (onPurchaseSuccess) {
                     onPurchaseSuccess(); 
                 }
             } catch (err: any) {
-                // Xử lý lỗi trả về từ axios
                 const errorMsg = err?.response?.data?.error || err.message;
                 setToast({ msg: 'Lỗi: ' + errorMsg, type: 'error' });
             }
@@ -283,17 +325,38 @@ export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, u
                             </div>
                         </div>
 
-                        {/* Nhập mã Voucher */}
-                        <label style={{fontWeight:'bold', display:'block', marginBottom: 5}}>Mã giảm giá:</label>
+                        {/* --- KHU VỰC NHẬP VOUCHER (ĐÃ SỬA VÀ DÙNG BIẾN ĐÚNG) --- */}
+                        <label style={{fontWeight:'bold', display:'block', marginBottom: 5}}>Mã giảm giá / Voucher:</label>
                         <div style={{display:'flex', gap: 10}}>
                             <input 
                                 placeholder="VD: SUMMER2025" 
-                                value={promoCode}
-                                onChange={e => setPromoCode(e.target.value)}
-                                style={{padding: 10, border: '1px solid #ccc', borderRadius: 6, flex: 1}}
+                                value={voucherCodeInput}
+                                onChange={e => setVoucherCodeInput(e.target.value.toUpperCase())}
+                                disabled={!!appliedVoucher}
+                                style={{padding: 10, border: '1px solid #ccc', borderRadius: 6, flex: 1, textTransform:'uppercase', fontWeight:'bold'}}
                             />
-                            <button onClick={handleApplyPromo} style={{background: '#333', color: '#fff', border: 'none', padding: '0 20px', borderRadius: 6, cursor:'pointer', fontWeight: 600}}>Áp dụng</button>
+                            <button 
+                                onClick={handleApplyVoucher} 
+                                disabled={isApplyingVoucher || !!appliedVoucher}
+                                style={{background: appliedVoucher ? '#00b894' : '#333', color: '#fff', border: 'none', padding: '0 20px', borderRadius: 6, cursor:'pointer', fontWeight: 600}}
+                            >
+                                {isApplyingVoucher ? '...' : (appliedVoucher ? 'Đã dùng' : 'Áp dụng')}
+                            </button>
                         </div>
+                        {/* Lỗi Voucher */}
+                        {voucherError && <div style={{color:'#e00000', fontSize:'0.85rem', marginTop:5}}>{voucherError}</div>}
+                        
+                        {/* Thông báo Voucher Thành công */}
+                        {appliedVoucher && (
+                            <div style={{ marginTop: 10, background: '#dff9fb', padding: '8px 12px', borderRadius: 4, color: '#00b894', fontSize: '0.9rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                                <span>
+                                    🏷️ <b>{appliedVoucher.code}</b>: 
+                                    {appliedVoucher.type === 'Percentage' ? ` Giảm ${appliedVoucher.value}%` : ` Giảm ${appliedVoucher.value.toLocaleString()}đ`}
+                                </span>
+                                <button onClick={handleRemoveVoucher} style={{background:'none', border:'none', color:'#e00000', cursor:'pointer', fontWeight:'bold'}}>✕ Bỏ</button>
+                            </div>
+                        )}
+                        {/* ------------------------------------------------------- */}
                     </div>
 
                     {/* Cột Phải: Tính tiền */}
@@ -327,21 +390,20 @@ export const CartPage: React.FC<CartPageProps> = ({ userId, onPurchaseSuccess, u
                             <span style={{color:'#666'}}>Phí vận chuyển:</span>
                             <span style={{fontWeight:600}}>+ {shippingFee.toLocaleString()} ₫</span>
                         </div>
-                        {discount > 0 && (
+                        
+                        {/* Dòng giảm giá Voucher */}
+                        {voucherDiscount > 0 && (
                             <div style={{display:'flex', justifyContent:'space-between', marginBottom: 10, color: 'green'}}>
                                 <span>Voucher giảm giá:</span>
-                                <span>- {discount.toLocaleString()} ₫</span>
+                                <span>- {voucherDiscount.toLocaleString()} ₫</span>
                             </div>
                         )}
-                        {memberDiscountAmount > 0 && (
+
+                        {/* Dòng giảm giá Thành viên */}
+                        {memberDiscount > 0 && (
                             <div style={{display:'flex', justifyContent:'space-between', marginBottom: 10}}>
-                                {/* Đổi label thành màu xám đậm #666 giống dòng Tạm tính */}
                                 <span style={{color:'#666'}}>Ưu đãi hạng Thành viên:</span>
-                                
-                                {/* Số tiền để màu đen đậm (mặc định) cho dễ đọc */}
-                                <span style={{fontWeight:600}}>
-                                    - {memberDiscountAmount.toLocaleString()} ₫
-                                </span>
+                                <span style={{fontWeight:600}}>- {memberDiscount.toLocaleString()} ₫</span>
                             </div>
                         )}
 

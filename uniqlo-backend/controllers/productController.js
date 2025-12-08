@@ -1,24 +1,28 @@
 // BE/controllers/productController.js
 import { sql, getPool } from '../config/db.js';
 
-// Helper: map record thành object FE-friendly
 function mapProductListRow(row) {
+  let promoDetails = null;
+  if (row.PromoInfo) {
+      const [name, type, value] = row.PromoInfo.split('|');
+      promoDetails = { name, type, value: Number(value) };
+  }
+
   return {
     id: row.ProductID,
     name: row.ProductName,
     price: row.Price,
+    finalPrice: row.FinalPrice,
+    promoDetails: promoDetails,
     description: row.Description,
-    // Sửa lỗi logic: Nếu có EmployeeID thì trả về, không thì null
-    employeeId: row.EmployeeID, 
-    // categoryId: row.MainCategoryID, // Dòng này sẽ được xử lý ở hàm map bên dưới
-    categories: row.Categories
-      ? row.Categories.split(',').map((c) => c.trim())
-      : [],
-    variantSummary: row.VariantSummary
+    employeeId: row.EmployeeID,
+    // Xử lý danh mục (đã được nối chuỗi từ SQL)
+    categories: row.Categories ? row.Categories.split(',').map((c) => c.trim()) : [],
+    imageUrl: row.ImageURL,
+    categoryId: row.MainCategoryID
   };
 }
 
-// 1. LẤY DANH SÁCH SẢN PHẨM
 export const getProducts = async (req, res) => {
   try {
     const { search, categoryId } = req.query;
@@ -31,13 +35,38 @@ export const getProducts = async (req, res) => {
         p.ProductName,
         p.Description,
         p.EmployeeID,
+        
+        -- 1. Giá Gốc
         (SELECT MIN(Price) FROM ProductVariant WHERE ProductID = p.ProductID) as Price,
-        STRING_AGG(c.CategoryName, ', ') AS Categories,
+
+        -- 2. Giá Sau Giảm
         (
-            SELECT STRING_AGG(CONCAT(Color, '/', Size), ', ') 
-            FROM ProductVariant 
-            WHERE ProductID = p.ProductID
-        ) AS VariantSummary,
+            SELECT MIN(dbo.fn_Get_FinalPrice_WithPromotion(pv.ProductID, pv.VariantID, a.PromoID, a.RuleID))
+            FROM ProductVariant pv
+            LEFT JOIN Applied a ON pv.ProductID = a.ProductID AND pv.VariantID = a.VariantID
+            LEFT JOIN Promotion prom ON a.PromoID = prom.PromoID
+            WHERE pv.ProductID = p.ProductID
+            AND (prom.PromoID IS NULL OR (prom.StartDate <= GETDATE() AND prom.EndDate >= GETDATE() AND prom.VoucherCode IS NULL))
+        ) as FinalPrice,
+
+        -- 3. Thông tin khuyến mãi (Đã bọc [rule] để tránh lỗi keyword)
+        (
+            SELECT TOP 1 CONCAT(prom.PromoName, '|', [rule].RuleType, '|', [rule].RewardValue)
+            FROM ProductVariant pv
+            JOIN Applied a ON pv.ProductID = a.ProductID AND pv.VariantID = a.VariantID
+            JOIN Promotion prom ON a.PromoID = prom.PromoID
+            JOIN PromotionRule [rule] ON a.PromoID = [rule].PromoID AND a.RuleID = [rule].RuleID
+            WHERE pv.ProductID = p.ProductID
+            AND prom.StartDate <= GETDATE() AND prom.EndDate >= GETDATE()
+            ORDER BY [rule].RewardValue DESC
+        ) as PromoInfo,
+
+        -- 4. Ảnh đại diện
+        (SELECT TOP 1 ImageURL FROM ProductVariant_ImageURL WHERE ProductID = p.ProductID) as ImageURL,
+
+        -- 5. Danh mục (FIX: Bỏ DISTINCT để tránh lỗi cú pháp SQL Server)
+        STRING_AGG(c.CategoryName, ', ') AS Categories,
+        
         MAX(bt.CategoryID) as MainCategoryID
       FROM [Product] p
       LEFT JOIN Belongs_To bt ON p.ProductID = bt.ProductID
@@ -45,17 +74,14 @@ export const getProducts = async (req, res) => {
     `;
 
     const conditions = [];
-
     if (search) {
       conditions.push('p.ProductName LIKE @Search');
       request.input('Search', sql.NVarChar(100), `%${search}%`);
     }
-
     if (categoryId) {
       conditions.push('c.CategoryID = @CategoryID');
       request.input('CategoryID', sql.Int, Number(categoryId));
     }
-
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
@@ -67,11 +93,8 @@ export const getProducts = async (req, res) => {
 
     const result = await request.query(query);
     
-    // Map dữ liệu: kết hợp Helper và thêm trường categoryId
-    const products = result.recordset.map(row => ({
-        ...mapProductListRow(row),     // Dấu ... dùng để copy các trường từ hàm helper
-        categoryId: row.MainCategoryID // Bổ sung field này để Form Edit tự động tick chọn danh mục
-    }));
+    // Map dữ liệu
+    const products = result.recordset.map(mapProductListRow);
 
     res.json(products);
   } catch (err) {

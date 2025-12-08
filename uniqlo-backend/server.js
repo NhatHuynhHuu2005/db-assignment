@@ -9,6 +9,7 @@ import productRoutes from './routes/productRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import promotionRoutes from './routes/promotionRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -32,6 +33,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/promotions', promotionRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
