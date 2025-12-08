@@ -152,7 +152,7 @@ export const updatePromotion = async (req, res) => {
         await transaction.begin();
         const request = new sql.Request(transaction);
 
-        // A. Update thông tin chính
+        // A. Update thông tin chính (Tên, Ngày) - Cái này luôn update được
         request.input('PromoID', sql.Int, id);
         request.input('Name', sql.NVarChar(100), name);
         request.input('Start', sql.DateTime, startDate);
@@ -164,36 +164,35 @@ export const updatePromotion = async (req, res) => {
             WHERE PromoID = @PromoID
         `);
 
-        // B. Update Rules (Cách đơn giản nhất: Xóa hết cũ -> Thêm mới)
-        // Lưu ý: Việc xóa Rule có thể ảnh hưởng bảng Applied (Cascading Delete)
-        // Trong create.sql: PromotionRule ON DELETE CASCADE khi xóa Promotion, 
-        // nhưng Applied references PromotionRule. Cần cẩn thận.
-        
-        // Xóa Rules cũ của Promo này
-        const reqDel = new sql.Request(transaction);
-        reqDel.input('PromoID', sql.Int, id);
-        
-        // Trước khi xóa Rule, phải xóa Applied liên quan đến Rule đó (Vì SQL không tự cascade từ Rule -> Applied trong create.sql của bạn)
-        // Tuy nhiên, để đơn giản và an toàn, ta giả định update Rules chỉ thay đổi Type/Value của RuleID 1
-        // Nếu muốn làm triệt để:
-        await reqDel.query(`DELETE FROM Applied WHERE PromoID = @PromoID`); // Reset sản phẩm áp dụng (nếu muốn logic chặt)
-        await reqDel.query(`DELETE FROM PromotionRule WHERE PromoID = @PromoID`);
-
-        // Insert lại Rules mới
+        // B. Update Rules (Xử lý thông minh hơn để tránh lỗi FK)
         if (rules && rules.length > 0) {
-            let ruleId = 1;
-            for (const r of rules) {
-                const reqRule = new sql.Request(transaction);
-                reqRule.input('PromoID', sql.Int, id);
-                reqRule.input('RuleID', sql.Int, ruleId);
-                reqRule.input('Type', sql.NVarChar(50), r.type);
-                reqRule.input('Value', sql.Decimal(15, 2), r.value);
+            // Giả định mỗi Promo chỉ có 1 Rule chính (RuleID = 1) như logic hiện tại của bạn
+            // Thay vì DELETE, ta dùng UPDATE trực tiếp
+            const r = rules[0]; 
+            
+            const reqRule = new sql.Request(transaction);
+            reqRule.input('PromoID', sql.Int, id);
+            reqRule.input('RuleID', sql.Int, 1); // Mặc định update Rule đầu tiên
+            reqRule.input('Type', sql.NVarChar(50), r.type);
+            reqRule.input('Value', sql.Decimal(15, 2), r.value);
 
+            // Kiểm tra xem Rule này đã tồn tại chưa
+            const checkRule = await new sql.Request(transaction)
+                .query(`SELECT 1 FROM PromotionRule WHERE PromoID = ${id} AND RuleID = 1`);
+
+            if (checkRule.recordset.length > 0) {
+                // Nếu có rồi -> UPDATE (Không bị lỗi FK vì không xóa dòng nào cả)
+                await reqRule.query(`
+                    UPDATE PromotionRule 
+                    SET RuleType = @Type, RewardValue = @Value
+                    WHERE PromoID = @PromoID AND RuleID = @RuleID
+                `);
+            } else {
+                // Nếu chưa có -> INSERT
                 await reqRule.query(`
                     INSERT INTO PromotionRule (PromoID, RuleID, RuleType, RewardValue)
                     VALUES (@PromoID, @RuleID, @Type, @Value)
                 `);
-                ruleId++;
             }
         }
 
@@ -203,7 +202,12 @@ export const updatePromotion = async (req, res) => {
     } catch (err) {
         await transaction.rollback();
         console.error(err);
-        res.status(500).json({ error: err.message });
+        // Nếu vẫn lỗi (VD: Cố tình xóa Promo đã dùng), báo lỗi dễ hiểu hơn
+        if (err.message.includes('REFERENCE constraint')) {
+             res.status(400).json({ error: 'Không thể thay đổi cấu trúc khuyến mãi đã có người sử dụng. Chỉ được phép đổi Tên hoặc Thời gian.' });
+        } else {
+             res.status(500).json({ error: err.message });
+        }
     }
 };
 

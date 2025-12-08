@@ -10,6 +10,8 @@ import reportRoutes from './routes/reportRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
+import employeeRoutes from './routes/employeeRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -34,6 +36,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/admin/employees', employeeRoutes);
+app.use('/api', reviewRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;

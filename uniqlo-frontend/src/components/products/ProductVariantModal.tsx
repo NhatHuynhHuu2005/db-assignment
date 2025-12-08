@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { type ProductDetail } from '../../api/api';
+import { ReviewSection } from './ReviewSection';
 import '../../styles/Components.scss';
 
 interface ModalProps {
     product: ProductDetail;
     onClose: () => void;
     onConfirm: (variantId: number, color: string, size: string, price: number, quantity: number) => void;
+    userId?: number;
 }
 
-export const ProductVariantModal: React.FC<ModalProps> = ({ product, onClose, onConfirm }) => {
+export const ProductVariantModal: React.FC<ModalProps> = ({ product, onClose, onConfirm, userId }) => {
     const colors = Array.from(new Set(product.variants.map(v => v.color)));
     const sizes = Array.from(new Set(product.variants.map(v => v.size)));
 
@@ -64,7 +66,7 @@ export const ProductVariantModal: React.FC<ModalProps> = ({ product, onClose, on
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
                 <button className="btn-close" onClick={onClose}>&times;</button>
                 
                 {/* HEADER */}
@@ -163,6 +165,13 @@ export const ProductVariantModal: React.FC<ModalProps> = ({ product, onClose, on
                 >
                     {getButtonLabel()}
                 </button>
+
+                <hr style={{ margin: '20px 0', border: '0', borderTop: '1px solid #eee' }} />
+                <ReviewSection 
+                    productId={product.id} 
+                    userId={userId} 
+                    isReadOnly={true} 
+                />
             </div>
         </div>
     );

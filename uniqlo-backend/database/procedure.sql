@@ -81,22 +81,39 @@ CREATE OR ALTER PROCEDURE sp_Delete_Product
 AS
 BEGIN
     SET NOCOUNT ON;
-
+    BEGIN TRANSACTION;
     BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM [Product] WHERE ProductID = @ProductID)
-            THROW 50021, N'Lỗi: ProductID không tồn tại.', 1;
-
+        -- Kiểm tra xem sản phẩm đã có trong đơn hàng chưa (Nếu có thì KHÔNG ĐƯỢC XÓA)
         IF EXISTS (SELECT 1 FROM OrderItem WHERE ProductID = @ProductID)
-            THROW 50022, N'Lỗi: Không thể xóa sản phẩm vì đã tồn tại trong OrderItem.', 1;
+        BEGIN
+            THROW 50001, N'Không thể xóa: Sản phẩm này đã có trong lịch sử đơn hàng.', 1;
+        END
 
-        IF EXISTS (SELECT 1 FROM Has_Stock WHERE ProductID = @ProductID)
-            THROW 50023, N'Lỗi: Không thể xóa sản phẩm vì đang có tồn kho tại các cửa hàng (Has_Stock).', 1;
+        -- 1. Xóa trong giỏ hàng (CartItem)
+        DELETE FROM CartItem WHERE ProductID = @ProductID;
+        
+        -- 2. Xóa trong kho (Has_Stock)
+        DELETE FROM Has_Stock WHERE ProductID = @ProductID;
 
+        -- 3. Xóa ảnh (ProductVariant_ImageURL)
+        DELETE FROM ProductVariant_ImageURL WHERE ProductID = @ProductID;
+
+        -- 4. FIX LỖI TRONG ẢNH: Xóa danh mục (Belongs_To)
+        DELETE FROM Belongs_To WHERE ProductID = @ProductID;
+
+        -- 5. Xóa khuyến mãi áp dụng (Applied) - Bổ sung thêm cho chắc
+        DELETE FROM Applied WHERE ProductID = @ProductID;
+
+        -- 6. Xóa biến thể (ProductVariant)
+        DELETE FROM ProductVariant WHERE ProductID = @ProductID;
+
+        -- 7. Cuối cùng: Xóa Product
         DELETE FROM [Product] WHERE ProductID = @ProductID;
 
-        PRINT N'Xóa sản phẩm thành công.';
+        COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
+        ROLLBACK TRANSACTION;
         THROW;
     END CATCH
 END;
@@ -321,44 +338,43 @@ BEGIN
 END;
 GO
 
-CREATE PROCEDURE sp_Delete_Employee
+CREATE OR ALTER PROCEDURE sp_Delete_Employee
     @UserID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
-        -- Kiểm tra xem ID này có phải là Employee không
-        IF NOT EXISTS (SELECT 1 FROM Employee WHERE UserID = @UserID)
-            THROW 50001, N'Người dùng này không phải là nhân viên hoặc không tồn tại.', 1;
-
         BEGIN TRANSACTION;
 
-        -- Bước 1: Gỡ bỏ trách nhiệm của nhân viên này khỏi các bảng liên quan (Set NULL)
-        -- (Để tránh lỗi khóa ngoại FK khi xóa)
+        -- Kiểm tra ràng buộc cứng: Nếu nhân viên đang quản lý Cửa hàng hoặc Đơn vị vận chuyển
+        IF EXISTS (SELECT 1 FROM Store WHERE EmployeeID = @UserID)
+        BEGIN
+            THROW 50002, N'Không thể xóa: Nhân viên đang quản lý một Cửa hàng. Hãy thay đổi người quản lý trước.', 1;
+        END
         
-        -- Cập nhật Product: Ai phụ trách sản phẩm này -> Set NULL
-        UPDATE Product SET EmployeeID = NULL WHERE EmployeeID = @UserID;
-        
-        -- Cập nhật Store: Ai quản lý kho -> Set NULL (Hoặc gán cho Admin mặc định khác nếu muốn)
-        -- Lưu ý: Store.EmployeeID là NOT NULL trong create.sql, nên bước này cần cẩn thận.
-        -- Nếu Store bắt buộc phải có người quản lý, bạn KHÔNG THỂ xóa nhân viên này trừ khi gán Store cho người khác trước.
-        -- Ở đây tôi giả định logic đơn giản là xóa Account.
+        IF EXISTS (SELECT 1 FROM ShippingUnit WHERE EmployeeID = @UserID)
+        BEGIN
+            THROW 50003, N'Không thể xóa: Nhân viên đang quản lý Đơn vị vận chuyển. Hãy thay đổi người quản lý trước.', 1;
+        END
 
-        -- Bước 2: Xóa trong bảng Account
-        -- Nhờ ON DELETE CASCADE cấu hình trong create.sql, 
-        -- nó sẽ tự động xóa dòng tương ứng trong bảng Employee.
+        -- Gỡ bỏ trách nhiệm khỏi các bảng cho phép NULL
+        -- 1. Gỡ khỏi Product (Sản phẩm do nhân viên này tạo sẽ mất người phụ trách, nhưng ko bị xóa)
+        UPDATE [Product] SET EmployeeID = NULL WHERE EmployeeID = @UserID;
+        
+        -- 2. Gỡ khỏi Order (Đơn hàng do nhân viên này xử lý)
+        UPDATE [Order] SET EmployeeID = NULL WHERE EmployeeID = @UserID;
+
+        -- 3. Gỡ khỏi Category
+        UPDATE Category SET EmployeeID = NULL WHERE EmployeeID = @UserID;
+
+        -- 4. Xóa Account (Cascade sẽ tự xóa bên bảng Employee)
         DELETE FROM Account WHERE UserID = @UserID;
 
         COMMIT TRANSACTION;
-        PRINT N'Xóa nhân viên thành công.';
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
-        -- Bắt lỗi cụ thể nếu dính khóa ngoại (ví dụ Store bắt buộc có người quản lý)
-        IF ERROR_NUMBER() = 547 
-            PRINT N'Lỗi: Không thể xóa nhân viên này vì họ đang đứng tên quản lý Cửa hàng hoặc Đơn vị vận chuyển (Dữ liệu bắt buộc). Hãy chuyển quyền quản lý trước.';
-        ELSE
-            THROW;
+        THROW;
     END CATCH
 END;
 GO

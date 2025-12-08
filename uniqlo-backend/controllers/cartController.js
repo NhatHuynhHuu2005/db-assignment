@@ -20,7 +20,13 @@ export const getCart = async (req, res) => {
           ci.VariantID,
           ci.Quantity,
           p.ProductName,
-          pv.Price,
+          
+          -- Lấy giá Gốc (để tham khảo)
+          pv.Price as OriginalPrice,
+          
+          -- TÍNH GIÁ BÁN THỰC TẾ (SỬA LỖI AGGREGATE BẰNG OUTER APPLY)
+          ISNULL(PromoCalc.DiscountPrice, pv.Price) AS Price, 
+
           pv.Color,
           pv.Size,
           (SELECT TOP 1 ImageURL FROM ProductVariant_ImageURL WHERE ProductID = ci.ProductID AND VariantID = ci.VariantID) as Image
@@ -28,6 +34,17 @@ export const getCart = async (req, res) => {
         JOIN CartItem ci ON c.CartID = ci.CartID
         JOIN Product p ON ci.ProductID = p.ProductID
         JOIN ProductVariant pv ON ci.ProductID = pv.ProductID AND ci.VariantID = pv.VariantID
+        
+        -- Kỹ thuật OUTER APPLY
+        OUTER APPLY (
+            SELECT TOP 1 dbo.fn_Get_FinalPrice_WithPromotion(ci.ProductID, ci.VariantID, a.PromoID, a.RuleID) as DiscountPrice
+            FROM Applied a
+            JOIN Promotion prom ON a.PromoID = prom.PromoID
+            WHERE a.ProductID = ci.ProductID AND a.VariantID = ci.VariantID
+            AND prom.StartDate <= GETDATE() AND prom.EndDate >= GETDATE()
+            ORDER BY DiscountPrice ASC
+        ) PromoCalc
+
         WHERE c.CustomerID = @CustomerID
       `);
     
@@ -91,115 +108,137 @@ export const addToCart = async (req, res) => {
 
 // 3. THANH TOÁN (Checkout) - Nghiệp vụ quan trọng nhất
 export const checkout = async (req, res) => {
-  const { userId, paymentMethod } = req.body;
+    // Nhận đủ các tham số
+    const { userId, address, unitId, paymentMethod, shippingFee, discountAmount, finalTotal } = req.body;
 
-  const validMethods = ['Cash', 'Banking'];
-  const method = validMethods.includes(paymentMethod) ? paymentMethod : 'Cash';
-  
-  const pool = await getPool();
-  const transaction = new sql.Transaction(pool);
-
-  try {
-    await transaction.begin(); // Bắt đầu giao dịch (Transaction)
-
-    // A. Lấy CartID của khách
-    const cartRes = await transaction.request()
-      .input('CustomerID', sql.Int, userId)
-      .query('SELECT CartID FROM Cart WHERE CustomerID = @CustomerID');
-    
-    if (cartRes.recordset.length === 0) throw new Error('Giỏ hàng trống!');
-    const cartId = cartRes.recordset[0].CartID;
-
-    // B. Tạo Đơn hàng (Order) mới
-    // Generate OrderID ngẫu nhiên > 6000 để tránh trùng sample_data
-    const newOrderId = Math.floor(Math.random() * 10000) + 6000;
-
-    await transaction.request()
-      .input('OrderID', sql.Int, newOrderId)
-      .input('CustomerID', sql.Int, userId)
-      .input('PaymentMethod', sql.NVarChar, method)
-      .query(`
-        INSERT INTO [Order] (
-          OrderID, OrderDate, Status, Address, CustomerID, EmployeeID,
-          PaymentMethod, PaymentStatus
-        )
-        VALUES (
-          @OrderID, GETDATE(), 'Pending', N'Địa chỉ mặc định khách hàng', @CustomerID, NULL,
-          @PaymentMethod, 'Unpaid'
-        )
-      `);
-
-    // C. Chuyển dữ liệu từ CartItem -> OrderItem
-    // Lưu ý: Phải lấy giá (Price) từ bảng ProductVariant tại thời điểm mua (Snapshot)
-    await transaction.request()
-      .input('CartID', sql.Int, cartId)
-      .input('OrderID', sql.Int, newOrderId)
-      .input('StoreID', sql.Int, DEMO_STORE_ID) 
-      .query(`
-        INSERT INTO OrderItem (OrderID, Quantity, PriceAtPurchase, ProductID, VariantID, StoreID, ShipmentID)
-        SELECT 
-          @OrderID,
-          -- ĐÃ XÓA DÒNG ROW_NUMBER()...
-          ci.Quantity,
-          pv.Price,
-          ci.ProductID,
-          ci.VariantID,
-          @StoreID,
-          NULL
-        FROM CartItem ci
-        JOIN ProductVariant pv ON ci.ProductID = pv.ProductID AND ci.VariantID = pv.VariantID
-        WHERE ci.CartID = @CartID
-      `);
-    const totalResult = await transaction.request()
-        .input('OrderID', sql.Int, newOrderId)
-        .query(`
-            SELECT SUM(Quantity * PriceAtPurchase) as OrderTotal 
-            FROM OrderItem 
-            WHERE OrderID = @OrderID
-        `);
-
-    const orderTotal = totalResult.recordset[0].OrderTotal || 0;
-
-    if (orderTotal > 0) {
-        await transaction.request()
-            .input('CustomerID', sql.Int, userId)
-            .input('NewAmount', sql.Decimal(18, 0), orderTotal)
-            .query(`
-                UPDATE Customer 
-                SET TotalSpent = ISNULL(TotalSpent, 0) + @NewAmount
-                WHERE UserID = @CustomerID
-            `);
-
-        await transaction.request()
-            .input('CustomerID_Tier', sql.Int, userId)
-            .query(`
-                UPDATE Customer
-                SET MemberTier = CASE 
-                    WHEN TotalSpent >= 50000000 THEN 'VIP'
-                    WHEN TotalSpent >= 25000000 THEN 'Platinum'
-                    WHEN TotalSpent >= 10000000 THEN 'Gold'
-                    WHEN TotalSpent >= 5000000  THEN 'Silver'
-                    WHEN TotalSpent >= 2000000  THEN 'Bronze'
-                    ELSE 'New Member'
-                END
-                WHERE UserID = @CustomerID_Tier
-            `);
+    if (!userId || !address || !unitId) {
+        return res.status(400).json({ error: 'Thiếu thông tin bắt buộc' });
     }
 
-    // D. Làm sạch giỏ hàng (Xóa CartItem)
-    await transaction.request()
-      .input('CartID', sql.Int, cartId)
-      .query('DELETE FROM CartItem WHERE CartID = @CartID');
+    const pool = await getPool();
+    const transaction = new sql.Transaction(pool);
 
-    await transaction.commit(); // Lưu tất cả thay đổi
-    
-    res.json({ message: 'Đặt hàng thành công!', orderId: newOrderId });
+    try {
+        await transaction.begin();
+        
+        // --- SỬA ĐỔI TỪ ĐÂY: TẠO REQUEST RIÊNG CHO TỪNG BƯỚC ---
 
-  } catch (err) {
-    await transaction.rollback(); // Nếu lỗi thì hoàn tác tất cả, không để dữ liệu rác
-    console.error(err);
-    res.status(500).json({ error: 'Lỗi thanh toán: ' + err.message });
-  }
+        // A. Lấy giỏ hàng hiện tại (Dùng reqCart)
+        const reqCart = new sql.Request(transaction); 
+        const cartRes = await reqCart.input('UserID', sql.Int, userId)
+            .query(`SELECT CartID FROM Cart WHERE CustomerID = @UserID`);
+        
+        if (cartRes.recordset.length === 0) throw new Error('Không tìm thấy giỏ hàng');
+        const cartId = cartRes.recordset[0].CartID;
+
+        // B. Lấy các item trong giỏ (Dùng reqItems)
+        const reqItems = new sql.Request(transaction);
+        const itemsRes = await reqItems.input('CartID', sql.Int, cartId)
+            .query(`
+                SELECT 
+                    ci.*, 
+                    pv.Price as OriginalPrice, -- Lấy giá gốc để tham khảo
+                    
+                    -- TÍNH GIÁ KHUYẾN MÃI (QUAN TRỌNG: Logic này tìm giá thấp nhất đang áp dụng)
+                    ISNULL(
+                        (
+                            SELECT TOP 1 dbo.fn_Get_FinalPrice_WithPromotion(pv.ProductID, pv.VariantID, a.PromoID, a.RuleID)
+                            FROM Applied a
+                            JOIN Promotion prom ON a.PromoID = prom.PromoID
+                            WHERE a.ProductID = pv.ProductID AND a.VariantID = pv.VariantID
+                            AND prom.StartDate <= GETDATE() AND prom.EndDate >= GETDATE()
+                            ORDER BY dbo.fn_Get_FinalPrice_WithPromotion(pv.ProductID, pv.VariantID, a.PromoID, a.RuleID) ASC
+                        ),
+                        pv.Price -- Nếu không có khuyến mãi thì lấy giá gốc
+                    ) as FinalPrice
+
+                FROM CartItem ci
+                JOIN ProductVariant pv ON ci.ProductID = pv.ProductID AND ci.VariantID = pv.VariantID
+                WHERE ci.CartID = @CartID
+            `);
+        
+        const items = itemsRes.recordset;
+        if (items.length === 0) throw new Error('Giỏ hàng trống');
+
+        // C. Tạo Đơn Hàng (Dùng reqOrder - QUAN TRỌNG)
+        const newOrderId = Math.floor(Math.random() * 1000000); 
+        const reqOrder = new sql.Request(transaction); // <--- TẠO MỚI ĐỂ KHÔNG BỊ TRÙNG UserID
+
+        reqOrder.input('NewOrderID', sql.Int, newOrderId);
+        reqOrder.input('UserID', sql.Int, userId); // Bây giờ khai báo lại UserID ở đây là OK vì là request mới
+        reqOrder.input('Address', sql.NVarChar(255), address);
+        reqOrder.input('UnitID', sql.Int, Number(unitId));
+        reqOrder.input('PaymentMethod', sql.NVarChar(50), paymentMethod || 'COD');
+        
+        // Các loại tiền
+        reqOrder.input('ShippingFee', sql.Decimal(18, 2), shippingFee || 0);
+        reqOrder.input('DiscountAmount', sql.Decimal(18, 2), discountAmount || 0);
+        reqOrder.input('TotalAmount', sql.Decimal(18, 2), finalTotal || 0);
+
+        await reqOrder.query(`
+            INSERT INTO [Order] (OrderID, CustomerID, Address, Status, OrderDate, UnitID, PaymentMethod, ShippingFee, DiscountAmount, TotalAmount)
+            VALUES (@NewOrderID, @UserID, @Address, 'Pending', GETDATE(), @UnitID, @PaymentMethod, @ShippingFee, @DiscountAmount, @TotalAmount)
+        `);
+
+        // D. Chuyển CartItem sang OrderItem & Trừ kho
+        for (const item of items) {
+            // Tìm kho (ReqStockCheck)
+            const reqStockCheck = new sql.Request(transaction);
+            const stockRes = await reqStockCheck
+                .input('P_ID', sql.Int, item.ProductID)
+                .input('V_ID', sql.Int, item.VariantID)
+                .input('Qty', sql.Int, item.Quantity)
+                .query(`
+                    SELECT TOP 1 StoreID, Quantity FROM Has_Stock 
+                    WHERE ProductID = @P_ID AND VariantID = @V_ID AND Quantity >= @Qty
+                `);
+
+            let storeId = 10; 
+            if (stockRes.recordset.length > 0) {
+                storeId = stockRes.recordset[0].StoreID;
+                
+                // Trừ kho (ReqUpdateStock)
+                const reqUpdateStock = new sql.Request(transaction);
+                await reqUpdateStock
+                    .input('Qty', sql.Int, item.Quantity)
+                    .input('S_ID', sql.Int, storeId)
+                    .input('P_ID', sql.Int, item.ProductID)
+                    .input('V_ID', sql.Int, item.VariantID)
+                    .query(`
+                        UPDATE Has_Stock SET Quantity = Quantity - @Qty 
+                        WHERE StoreID = @S_ID AND ProductID = @P_ID AND VariantID = @V_ID
+                    `);
+            }
+
+            // Insert OrderItem (ReqInsertItem)
+            const reqInsertItem = new sql.Request(transaction);
+            await reqInsertItem
+                .input('O_ID', sql.Int, newOrderId)
+                .input('Qty', sql.Int, item.Quantity)
+                .input('Price', sql.Decimal(18,2), item.FinalPrice) 
+                
+                .input('P_ID', sql.Int, item.ProductID)
+                .input('V_ID', sql.Int, item.VariantID)
+                .input('S_ID', sql.Int, storeId)
+                .query(`
+                    INSERT INTO OrderItem (OrderID, Quantity, PriceAtPurchase, ProductID, VariantID, StoreID)
+                    VALUES (@O_ID, @Qty, @Price, @P_ID, @V_ID, @S_ID)
+                `);
+        }
+
+        // E. Xóa giỏ hàng cũ (ReqDeleteCart)
+        const reqDeleteCart = new sql.Request(transaction);
+        await reqDeleteCart.input('CartID', sql.Int, cartId)
+            .query(`DELETE FROM CartItem WHERE CartID = @CartID`);
+
+        await transaction.commit();
+        res.json({ message: 'Đặt hàng thành công!', orderId: newOrderId });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error(err);
+        res.status(500).json({ error: 'Lỗi thanh toán: ' + err.message });
+    }
 };
 
 // 4. XÓA SẢN PHẨM KHỎI GIỎ (API Mới)
@@ -237,4 +276,14 @@ export const removeFromCart = async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Lỗi xóa sản phẩm: ' + err.message });
   }
+};
+
+export const getShippingUnits = async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query('SELECT UnitID, UnitName FROM ShippingUnit');
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: 'Lỗi lấy danh sách vận chuyển' });
+    }
 };

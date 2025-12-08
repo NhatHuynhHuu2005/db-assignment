@@ -25,7 +25,7 @@ CREATE TABLE Account (
     UserID INT PRIMARY KEY IDENTITY(1,1),
     Email VARCHAR(255) NOT NULL UNIQUE,
     UserName VARCHAR(100) NOT NULL UNIQUE,
-    Password VARCHAR(255) NOT NULL, -- Thực tế nên dùng PasswordHash và độ dài lớn hơn
+    Password VARCHAR(255) NOT NULL,
     Role VARCHAR(50) NOT NULL,
     DoB DATE NULL,
     CreatedAt DATETIME DEFAULT GETDATE(),
@@ -59,12 +59,12 @@ CREATE TABLE Customer (
 );
 GO
 
--- 1.4 Employee (Lớp con) - Đã thêm thuộc tính dẫn xuất PermissionCount từ Nhóm 2
+-- 1.4 Employee (Lớp con)
 CREATE TABLE Employee (
     UserID INT PRIMARY KEY,
     StartDate DATE NOT NULL DEFAULT GETDATE(),
     Salary DECIMAL(18,2) NOT NULL,
-    -- PermissionCount INT NOT NULL DEFAULT 0, -- Thuộc tính dẫn xuất này không phù hợp với Employee
+
     CONSTRAINT FK_Employee_Account FOREIGN KEY (UserID) REFERENCES Account(UserID) ON DELETE CASCADE,
     CONSTRAINT CHK_Employee_Salary CHECK (Salary > 0),
     CONSTRAINT CHK_Employee_StartDate CHECK (StartDate <= GETDATE())
@@ -169,8 +169,8 @@ GO
 CREATE TABLE ProductVariant_ImageURL (
     ProductID INT,
     VariantID INT,
-    ImageURL NVARCHAR(200),
-    PRIMARY KEY (ProductID, VariantID, ImageURL),
+    ImageURL NVARCHAR(MAX),
+    PRIMARY KEY (ProductID, VariantID),
     CONSTRAINT FK_ImageURL_Variant FOREIGN KEY (ProductID, VariantID)
         REFERENCES ProductVariant(ProductID, VariantID) ON DELETE CASCADE
 );
@@ -335,7 +335,7 @@ GO
 
 -- 5.5 OrderItem (Chi tiết đơn hàng - Thực thể yếu)
 CREATE TABLE OrderItem (
-    OrderItemID INT PRIMARY KEY IDENTITY(1,1), -- Sửa: Làm khóa chính tự tăng
+    OrderItemID INT PRIMARY KEY IDENTITY(1,1),
     OrderID INT NOT NULL,
     Quantity INT NOT NULL,
     PriceAtPurchase DECIMAL(18,2) NOT NULL,

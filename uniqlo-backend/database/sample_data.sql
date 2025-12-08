@@ -1,36 +1,33 @@
 ﻿USE UNIQLO_DB;
 GO
 
--- 1. NHÓM NGƯỜI DÙNG, KHÁCH VÀ AUDIT
-
--- Dữ liệu Account (17 tài khoản: 1 Admin, 7 Employee, 9 Customer)
--- ID tự tăng từ 1
+--Dữ liệu Account
 INSERT INTO Account (Email, UserName, Role, Password, DoB) VALUES
-('admin@uniqlo.com', 'admin_sys', 'Admin', 'Admin@123456', '1985-01-10'), -- ID: 1
-('manager1@mail.com', 'manager_tran', 'Employee', 'Manager@123456', '1988-06-15'), -- ID: 2 (Quản lý)
-('manager_hcm@mail.com', 'manager_hcm', 'Employee', 'Manager@123456', '1990-01-01'), -- ID: 3 (Employee/Người phụ trách sản phẩm 10)
-('manager_hn@mail.com', 'manager_hn', 'Employee', 'Manager@123456', '1991-03-15'), -- ID: 4 (Employee/Người phụ trách sản phẩm 11)
-('staff_kho_hcm@mail.com', 'staff_kho_hcm', 'Employee', 'Staff@123456', '1995-04-20'), -- ID: 5 (Employee/Kho miền Nam 12)
-('staff_logistics@mail.com', 'staff_logistics', 'Employee', 'Staff@123456', '1996-08-25'), -- ID: 6 (Employee/Vận chuyển 14)
-('staff_le@mail.com', 'staff_le', 'Employee', 'Staff@123456', '1995-04-20'), -- ID: 7 (Employee)
-('staff_pham@mail.com', 'staff_pham', 'Employee', 'Staff@123456', '1996-08-25'), -- ID: 8 (Employee)
-('nguyenvana@email.com', 'nguyenvana', 'Customer', 'Pass@123456', '1995-03-15'), -- ID: 9
-('tranthib@email.com', 'tranthib', 'Customer', 'Pass@123456', '1998-07-22'), -- ID: 10
-('levanc@email.com', 'levanc', 'Customer', 'Pass@123456', '2000-11-08'), -- ID: 11
-('phamthid@email.com', 'phamthid', 'Customer', 'Pass@123456', '1993-05-30'), -- ID: 12
-('khach_a@mail.com', 'khach_a', 'Customer', 'Pass@123456', '1992-01-01'), -- ID: 13
-('khach_b@mail.com', 'khach_b', 'Customer', 'Pass@123456', '1993-02-02'), -- ID: 14
-('khach_c@mail.com', 'khach_c', 'Customer', 'Pass@123456', '1994-03-03'), -- ID: 15
-('khach_d@mail.com', 'khach_d', 'Customer', 'Pass@123456', '1995-04-04'), -- ID: 16
-('khach_e@mail.com', 'khach_e', 'Customer', 'Pass@123456', '1996-05-05'); -- ID: 17
+('admin@uniqlo.com', 'admin_sys', 'Admin', 'Admin@123456', '1985-01-10'), 
+('manager1@mail.com', 'manager_tran', 'Employee', 'Manager@123456', '1988-06-15'), 
+('manager_hcm@mail.com', 'manager_hcm', 'Employee', 'Manager@123456', '1990-01-01'), 
+('manager_hn@mail.com', 'manager_hn', 'Employee', 'Manager@123456', '1991-03-15'), 
+('staff_kho_hcm@mail.com', 'staff_kho_hcm', 'Employee', 'Staff@123456', '1995-04-20'),
+('staff_logistics@mail.com', 'staff_logistics', 'Employee', 'Staff@123456', '1996-08-25'), 
+('staff_le@mail.com', 'staff_le', 'Employee', 'Staff@123456', '1995-04-20'), 
+('staff_pham@mail.com', 'staff_pham', 'Employee', 'Staff@123456', '1996-08-25'), 
+('nguyenvana@email.com', 'nguyenvana', 'Customer', 'Pass@123456', '1995-03-15'), 
+('tranthib@email.com', 'tranthib', 'Customer', 'Pass@123456', '1998-07-22'),
+('levanc@email.com', 'levanc', 'Customer', 'Pass@123456', '2000-11-08'), 
+('phamthid@email.com', 'phamthid', 'Customer', 'Pass@123456', '1993-05-30'), 
+('khach_a@mail.com', 'khach_a', 'Customer', 'Pass@123456', '1992-01-01'), 
+('khach_b@mail.com', 'khach_b', 'Customer', 'Pass@123456', '1993-02-02'), 
+('khach_c@mail.com', 'khach_c', 'Customer', 'Pass@123456', '1994-03-03'), 
+('khach_d@mail.com', 'khach_d', 'Customer', 'Pass@123456', '1995-04-04'),
+('khach_e@mail.com', 'khach_e', 'Customer', 'Pass@123456', '1996-05-05'); 
 
 -- Dữ liệu User_PhoneNumber
 INSERT INTO User_PhoneNumber (UserID, PhoneNumber) VALUES
-(9, '0901234567'), (9, '0912345678'), -- Customer 9 có 2 số
+(9, '0901234567'), (9, '0912345678'), 
 (10, '0923456789'),
 (11, '0934567890'),
-(1, '0967890123'), -- Admin
-(2, '0978901234'), -- Manager
+(1, '0967890123'), 
+(2, '0978901234'), 
 (3, '0989012345'),
 (4, '0990123456'),
 (13, '0801234567'),
@@ -42,31 +39,30 @@ INSERT INTO Customer (UserID, Street, Ward, District, City) VALUES
 (10, N'456 Lê Lợi', N'Phường Bến Thành', N'Quận 1', N'TP. Hồ Chí Minh'),
 (11, N'789 Trần Hưng Đạo', N'Phường Cầu Ông Lãnh', N'Quận 1', N'TP. Hồ Chí Minh'),
 (12, N'321 Võ Văn Tần', N'Phường 6', N'Quận 3', N'TP. Hồ Chí Minh'),
-(13, N'123 Lê Lợi', N'Q1', N'TP.HCM', N'TP. Hồ Chí Minh'), --- khach a
-(14, N'45 Cầu Giấy', N'Dịch Vọng', N'Cầu Giấy', N'Hà Nội'), --- khach b
-(15, N'12 Nguyễn Văn Linh', N'Hòa Thuận', N'Hải Châu', N'Đà Nẵng'), --- khach c
-(16, N'Khu phố 3', N'Long Bình', N'Biên Hòa', N'Đồng Nai'), --- khach d
-(17, N'Số 5 Hùng Vương', N'Ninh Kiều', N'Ninh Kiều', N'Cần Thơ'); --- khach e
+(13, N'123 Lê Lợi', N'Q1', N'TP.HCM', N'TP. Hồ Chí Minh'), 
+(14, N'45 Cầu Giấy', N'Dịch Vọng', N'Cầu Giấy', N'Hà Nội'), 
+(15, N'12 Nguyễn Văn Linh', N'Hòa Thuận', N'Hải Châu', N'Đà Nẵng'), 
+(16, N'Khu phố 3', N'Long Bình', N'Biên Hòa', N'Đồng Nai'), 
+(17, N'Số 5 Hùng Vương', N'Ninh Kiều', N'Ninh Kiều', N'Cần Thơ'); 
 
 -- Dữ liệu Employee
 INSERT INTO Employee (UserID, StartDate, Salary) VALUES
-(1, '2020-01-15', 30000000.00),  -- Admin
-(2, '2021-03-20', 20000000.00),  -- Manager 1
-(3, '2020-01-01', 30000000),     -- Manager HCM / Emp phụ trách sản phẩm
-(4, '2021-03-15', 28000000),     -- Manager HN / Emp phụ trách sản phẩm
-(5, '2022-06-01', 12000000),     -- Staff Kho / Emp phụ trách kho
-(6, '2023-01-01', 11000000),     -- Staff Logistics / Emp phụ trách vận chuyển
-(7, '2022-05-10', 12000000.00),  -- Staff 1
-(8, '2022-08-15', 12000000.00);  -- Staff 2
+(1, '2020-01-15', 30000000.00),  
+(2, '2021-03-20', 20000000.00), 
+(3, '2020-01-01', 30000000),     
+(4, '2021-03-15', 28000000),     
+(5, '2022-06-01', 12000000),     
+(6, '2023-01-01', 11000000),    
+(7, '2022-05-10', 12000000.00),  
+(8, '2022-08-15', 12000000.00);  
 
 -- Dữ liệu Guest
 INSERT INTO Guest (IP, SearchHistory, LastVisitTime, ViewedProduct) VALUES
-('192.168.1.100', 'áo khoác, quần jean', '2025-11-20 10:30:00', '1001,1002'),
-('192.168.1.101', 'váy nữ, giày', '2025-11-21 14:15:00', '1003,1004'),
-('192.168.1.102', 'áo thun nam', '2025-11-22 09:45:00', '1005'),
-('192.168.1.103', 'phụ kiện thời trang', '2025-11-22 16:20:00', '1006,1007'),
-('192.168.1.104', 'quần short, áo polo', '2025-11-23 11:00:00', '1008,P009,P010');
-
+('192.168.1.100', N'áo khoác, quần jean', '2025-11-20 10:30:00', '1001,1002'),
+('192.168.1.101', N'váy nữ, giày', '2025-11-21 14:15:00', '1003,1004'),
+('192.168.1.102', N'áo thun nam', '2025-11-22 09:45:00', '1005'),
+('192.168.1.103', N'phụ kiện thời trang', '2025-11-22 16:20:00', '1006,1007'),
+('192.168.1.104', N'quần short, áo polo', '2025-11-23 11:00:00', '1008,P009,P010');
 -- Dữ liệu Convert_to
 INSERT INTO Convert_to (UserID, GuestIP, ConvertedAt) VALUES
 (9, '192.168.1.100', '2025-11-20 10:45:00'),
@@ -89,7 +85,7 @@ INSERT INTO AuditLog (ActionType, TargetEntity, TargetID, Details, UserID, [Time
 ('INSERT', 'Employee', '1', N'Thêm nhân viên mới', 1, '2025-11-01 09:00:00'),
 ('UPDATE', 'Employee', '7', N'Cập nhật lương nhân viên', 1, '2025-11-15 14:20:00'),
 ('LOGIN', 'Account', '10', N'Đăng nhập thành công', 10, '2025-11-21 14:15:00'),
-('ORDER_PLACED', 'Order', '5001', N'Đặt hàng thành công', 9, '2025-11-20 11:00:00'), 
+('ORDER_PLACED', '[Order]', '5001', N'Đặt hàng thành công', 9, '2025-11-20 11:00:00'), 
 ('DELETE', 'TempCartItem', '1-2', N'Xóa sản phẩm khỏi giỏ hàng tạm', NULL, '2025-11-20 10:42:00'),
 ('UPDATE', 'Account', '11', N'Đổi mật khẩu', 11, '2025-11-22 15:30:00'),
 ('LOGOUT', 'Account', '9', N'Đăng xuất', 9, '2025-11-20 12:00:00');
@@ -113,8 +109,8 @@ INSERT INTO Category(CategoryID, CategoryName, ParentCategoryID, EmployeeID) VAL
 (10, N'Đầm/Váy Liền', 2, 3),
 (11, N'Phụ kiện', NULL, 4),
 (12, N'Đồ lót/Đồ mặc trong', NULL, 3),
-(13, N'Áo Giữ Nhiệt', 4, 3), -- Cấp 3: Áo Giữ Nhiệt (Con của Áo Nam)
-(14, N'Chống Nắng', 6, 4); -- Cấp 3: Chống Nắng (Con của Áo Khoác Nam)
+(13, N'Áo Giữ Nhiệt', 4, 3), 
+(14, N'Chống Nắng', 6, 4); 
 SET IDENTITY_INSERT Category OFF;
 
 -- 2.2 Product 
@@ -255,45 +251,45 @@ INSERT INTO ShippingUnit (UnitID, UnitName, EmployeeID) VALUES
 -- Dữ liệu Has_Stock
 INSERT INTO Has_Stock (StoreID, ProductID, VariantID, Quantity) VALUES
 -- 1000: Áo Thun U (Variant 1, 2, 3)
-(15, 1000, 1, 498),  -- Đã trừ 2 đơn hàng (500-1-1)
-(15, 1000, 2, 500),  -- Có hàng
-(10, 1000, 3, 50),   -- Có hàng
+(15, 1000, 1, 498),  
+(15, 1000, 2, 500),  
+(10, 1000, 3, 50),   
 -- 1001: Áo Khoác UV (Variant 1, 2, 3)
-(15, 1001, 1, 199),  -- Đã trừ 1 đơn hàng (200-1)
-(16, 1001, 2, 10),   -- Có hàng
-(13, 1001, 3, 3),    -- Có hàng
+(15, 1001, 1, 199),  
+(16, 1001, 2, 10),   
+(13, 1001, 3, 3),   
 -- 1002: Quần Jeans Nữ (Variant 1, 2)
-(15, 1002, 1, 298),  -- Đã trừ 2 đơn hàng (300-1-1)
-(10, 1002, 2, 10),   -- Có hàng
+(15, 1002, 1, 298),  
+(10, 1002, 2, 10),   
 -- 1003: Áo Sơ Mi Flannel (Variant 1, 2)
-(16, 1003, 1, 150),  -- Có hàng
-(16, 1003, 2, 50),   -- Có hàng (Đảm bảo cho TempCartID 5)
+(16, 1003, 1, 150),  
+(16, 1003, 2, 50),   
 -- 1004: Đầm Rayon (Variant 1, 2)
-(10, 1004, 1, 15),   -- Có hàng (Đảm bảo cho CartItem ID 4)
-(15, 1004, 2, 100),  -- Có hàng
+(10, 1004, 1, 15),   
+(15, 1004, 2, 100),  
 -- 1005: Áo Polo Dry-EX (Variant 1, 2)
-(13, 1005, 1, 2),    -- Có hàng (Đảm bảo cho Applied và Has_Stock)
-(15, 1005, 2, 50),   -- Có hàng
+(13, 1005, 1, 2),    
+(15, 1005, 2, 50),   
 -- 1006: Váy Chân Váy (Variant 1)
-(10, 1006, 1, 25),   -- Có hàng
+(10, 1006, 1, 25),   
 -- 1007: HEATTECH (Variant 1, 3)
-(16, 1007, 1, 998),  -- Đã trừ 2 đơn hàng (1000-2)
-(16, 1007, 3, 500),  -- Có hàng
+(16, 1007, 1, 998),  
+(16, 1007, 3, 500),  
 -- 1008: Quần Kaki (Variant 1)
-(15, 1008, 1, 150),  -- Có hàng
+(15, 1008, 1, 150),  
 -- 1009: Áo Len (Variant 1)
-(16, 1009, 1, 50),   -- Có hàng
+(16, 1009, 1, 50),   
 -- 1010: Túi Đeo Vai (Variant 1)
-(10, 1010, 1, 5),    -- Có hàng
+(10, 1010, 1, 5),    
 -- 1011: Vớ (Variant 1)
-(16, 1011, 1, 200),  -- Có hàng
+(16, 1011, 1, 200),  
 -- 1012: Áo Bra Top (Variant 1)
-(15, 1012, 1, 50),   -- Có hàng
+(15, 1012, 1, 50),   
 -- 1013: Áo Khoác Puffer (Variant 1, 2)
-(15, 1013, 1, 80),   -- Có hàng
-(16, 1013, 2, 50),   -- Có hàng
+(15, 1013, 1, 80),   
+(16, 1013, 2, 50),   
 -- 1014: Quần Short Nữ (Variant 1)
-(15, 1014, 1, 100);  -- Có hàng
+(15, 1014, 1, 100);  
 GO
 
 -- =====================================================

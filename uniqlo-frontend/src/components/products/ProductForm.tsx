@@ -1,41 +1,36 @@
 import React, { useState, useEffect } from 'react';
-// 1. Xóa 'Product' khỏi import để hết lỗi unused
-import type { ProductPayload, VariantPayload } from '../../api/api';
+import type { ProductPayload } from '../../api/api';
+// 1. IMPORT TOAST
+import { Toast } from '../common/Toast'; 
 
 interface ProductFormProps {
-  // Dùng any để linh hoạt nhận cả Product thường lẫn ProductDetail (có variants)
   initial?: any; 
   onSubmit: (payload: ProductPayload, id?: number) => Promise<void>;
   onCancel: () => void;
 }
 
 // --- DỮ LIỆU DANH MỤC ---
-// --- DỮ LIỆU DANH MỤC (Đã đồng bộ khớp với SQL Server) ---
 const CATEGORIES = [
-  // Cấp 1
   { id: 1, name: 'Nam', parentId: null },
   { id: 2, name: 'Nữ', parentId: null },
   { id: 3, name: 'Trẻ em', parentId: null },
   
-  // Cấp 2 - NAM (Parent 1)
   { id: 4, name: 'Áo', parentId: 1 },
   { id: 5, name: 'Quần', parentId: 1 },
   { id: 6, name: 'Áo khoác', parentId: 1 },
-  { id: 7, name: 'Áo len/Áo nỉ', parentId: 1 }, // <--- Sửa ID từ 8 thành 7
+  { id: 7, name: 'Áo len/Áo nỉ', parentId: 1 },
 
-  // Cấp 2 - NỮ (Parent 2)
-  { id: 8, name: 'Áo', parentId: 2 },           // <--- ID 8 là Áo nữ
+  { id: 8, name: 'Áo', parentId: 2 },
   { id: 9, name: 'Quần/Chân váy', parentId: 2 },
   { id: 10, name: 'Đầm/Váy liền', parentId: 2 },
 
-  // Cấp 2 - Chung
   { id: 11, name: 'Phụ kiện', parentId: null },
   { id: 12, name: 'Đồ lót/Đồ mặc trong', parentId: null },
 
-  // Cấp 3 (Con của Áo và Áo khoác Nam) - Kiểm tra lại ID trong SQL nếu có
   { id: 13, name: 'Áo giữ nhiệt', parentId: 4}, 
-  { id: 14, name: 'Chống nắng', parentId: 6 }   // Sửa parentId thành 6 (Áo khoác Nam) cho đúng logic
+  { id: 14, name: 'Chống nắng', parentId: 6 }
 ];
+
 export const ProductForm: React.FC<ProductFormProps> = ({
   initial,
   onSubmit,
@@ -45,17 +40,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [employeeId, setEmployeeId] = useState<number>(3);
   const [description, setDescription] = useState('');
   
-  // State danh sách biến thể (Màu/Size/Giá)
-  const [variants, setVariants] = useState<VariantPayload[]>([
-      { color: '', size: '', price: 0 }
+  const [variants, setVariants] = useState<any[]>([
+      { color: '', size: '', price: 0, imageUrl: '' }
   ]);
 
-  // State danh mục
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [activeTabId, setActiveTabId] = useState<number>(1); 
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  // 2. THAY THẾ STATE ERROR BẰNG TOAST
+  // const [error, setError] = useState<string | null>(null); <--- BỎ DÒNG NÀY
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   // --- LOGIC: Khởi tạo dữ liệu khi Edit ---
   useEffect(() => {
@@ -64,32 +60,37 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       setDescription(initial.description || '');
       setEmployeeId(initial.employeeId ?? 3);
       
-      // Load variants: Nếu có thì load, không thì tạo dòng mặc định từ price cũ
       if (initial.variants && initial.variants.length > 0) {
           setVariants(initial.variants.map((v: any) => ({
               variantId: v.variantId,
               color: v.color,
               size: v.size,
-              price: v.price
+              price: v.price,
+              imageUrl: (v.images && v.images.length > 0) ? v.images[0] : ''
           })));
       } else {
-          // Fallback cho data cũ
-          setVariants([{ color: 'Mặc định', size: 'Free', price: initial.price || 0 }]);
+          setVariants([{ color: 'Mặc định', size: 'Free', price: initial.price || 0, imageUrl: '' }]);
       }
       
-      if (initial.categoryId) {
-         setSelectedCategoryId(initial.categoryId);
-         // Logic tìm tab cha
-         const currentCat = CATEGORIES.find(c => c.id === initial.categoryId);
+      let targetCatId: number | null = null;
+      if (initial.categories && Array.isArray(initial.categories) && initial.categories.length > 0) {
+          const found = initial.categories.find((c: any) => CATEGORIES.some(local => local.id === c.id));
+          if (found) targetCatId = found.id;
+      } else if (initial.categoryId) {
+          targetCatId = initial.categoryId;
+      }
+
+      if (targetCatId) {
+         setSelectedCategoryId(targetCatId);
+         const currentCat = CATEGORIES.find(c => c.id === targetCatId);
          if (currentCat) {
              if (currentCat.parentId === null) {
                  setActiveTabId(currentCat.id);
              } else {
                  const parent = CATEGORIES.find(p => p.id === currentCat.parentId);
                  if (parent) {
-                     if (parent.parentId === null) {
-                         setActiveTabId(parent.id);
-                     } else {
+                     if (parent.parentId === null) setActiveTabId(parent.id);
+                     else {
                          const grandParent = CATEGORIES.find(gp => gp.id === parent.parentId);
                          if (grandParent) setActiveTabId(grandParent.id);
                      }
@@ -100,7 +101,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [initial?.id]);
 
-  // --- HELPER: Lấy cây danh mục (Cha -> Con -> Cháu) ---
   const getFullCategoryHierarchy = (leafId: number | null): number[] => {
     if (!leafId) return [];
     const result: number[] = [leafId];
@@ -114,9 +114,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     return result;
   };
 
-  // --- LOGIC XỬ LÝ BIẾN THỂ (Thêm/Sửa/Xóa dòng) ---
   const addVariant = () => {
-      setVariants([...variants, { color: '', size: '', price: 0 }]);
+      setVariants([...variants, { color: '', size: '', price: 0, imageUrl: '' }]);
   };
 
   const removeVariant = (index: number) => {
@@ -127,7 +126,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       }
   };
 
-  const updateVariant = (index: number, field: keyof VariantPayload, value: any) => {
+  const updateVariant = (index: number, field: string, value: any) => {
       const newVars = [...variants];
       newVars[index] = { ...newVars[index], [field]: value };
       setVariants(newVars);
@@ -136,17 +135,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   // --- SUBMIT FORM ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (!name.trim()) return setError('Tên sản phẩm thiếu');
-    if (!selectedCategoryId) return setError('Vui lòng chọn loại sản phẩm');
+    
+    // 3. VALIDATE VÀ HIỆN TOAST
+    if (!name.trim()) {
+        setToast({ msg: 'Vui lòng nhập tên sản phẩm!', type: 'error' });
+        return;
+    }
+    if (!selectedCategoryId) {
+        setToast({ msg: 'Vui lòng chọn danh mục sản phẩm!', type: 'error' });
+        return;
+    }
 
-    // Validate Variants
     const validVariants = variants.filter(v => v.color && v.size && v.price >= 0);
-    if (validVariants.length === 0) return setError('Vui lòng nhập ít nhất 1 phiên bản (Màu/Size/Giá)');
+    if (validVariants.length === 0) {
+        setToast({ msg: 'Cần ít nhất 1 dòng phân loại đầy đủ (Màu, Size, Giá)!', type: 'error' });
+        return;
+    }
 
     setSubmitting(true);
-    
-    // 2. Fix lỗi 'categoryIds declared but never read': Sử dụng biến này ngay bên dưới
     const categoryIds = getFullCategoryHierarchy(selectedCategoryId);
 
     try {
@@ -154,19 +160,30 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         name: name.trim(), 
         description: description.trim(), 
         employeeId, 
-        categoryIds: categoryIds, // <--- Đã dùng biến categoryIds
-        variants: validVariants   // Gửi danh sách biến thể
+        categoryIds: categoryIds,
+        variants: variants.map(v => ({
+            ...v,
+            price: Number(v.price)
+        }))
       };
 
       await onSubmit(payload, initial?.id);
     } catch (err: any) {
-      setError(err?.message || 'Lỗi lưu sản phẩm');
+      const status = err?.response?.status;
+
+      if (status === 400) {
+          setToast({ msg: "Đã có sản phẩm trùng tên trong danh sách!", type: 'error' });
+      } 
+
+      else {
+          const errorMsg = err?.response?.data?.error || err.message || 'Lỗi hệ thống';
+          setToast({ msg: "Lỗi: " + errorMsg, type: 'error' });
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  // --- RENDER DANH MỤC ---
   const renderCategorySelection = () => {
     const parents = CATEGORIES.filter(c => c.parentId === null);
     const subCategories = CATEGORIES.filter(c => c.parentId === activeTabId);
@@ -191,7 +208,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {/* ROW 1: TABS */}
         <div style={{ display: 'flex', flexWrap: 'wrap', background: '#f3f4f6', borderRadius: '6px', padding: '4px', width: 'fit-content', gap: '4px' }}>
           {parents.map(parent => (
             <button
@@ -216,7 +232,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           ))}
         </div>
 
-        {/* ROW 2: CHIPS Cấp 2 */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
           {subCategories.map(sub => {
             const isSelfSelected = selectedCategoryId === sub.id;
@@ -231,7 +246,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           })}
         </div>
 
-        {/* ROW 3: CHIPS Cấp 3 */}
         {level3Categories.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px', paddingLeft: '10px', borderLeft: '2px solid #e5e7eb', animation: 'fadeIn 0.3s ease' }}>
                 <span style={{fontSize: '0.8rem', color:'#888', fontStyle:'italic'}}>Chi tiết:</span>
@@ -252,12 +266,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
   return (
     <div className="card" style={{ padding: '24px', background:'#fff', borderRadius:'8px', boxShadow:'0 1px 3px rgba(0,0,0,0.1)' }}>
+      {/* 4. HIỂN THỊ TOAST */}
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+
       <h3 className="card__title" style={{ marginBottom: '24px', color: '#111827', fontWeight: 700, fontSize: '1.25rem' }}>
         {initial ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
       </h3>
       
       <form onSubmit={handleSubmit}>
-        {/* Hàng 1: Tên & EmployeeID */}
         <div className="form-row" style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
           <div style={{ flex: 2 }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
@@ -266,7 +282,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <input 
               className="form-control" 
               style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.95rem', outline: 'none' }}
-              value={name} onChange={(e) => setName(e.target.value)} required 
+              value={name} onChange={(e) => setName(e.target.value)}
               placeholder="Nhập tên sản phẩm..."
             />
           </div>
@@ -283,54 +299,103 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           </div>
         </div>
 
-        {/* Hàng 2: DANH SÁCH BIẾN THỂ (Thay thế ô giá cũ) */}
         <div className="form-row" style={{ marginBottom: '20px' }}>
-            <label style={{ fontWeight: 600, display: 'block', marginBottom: '10px' }}>Danh sách phân loại hàng (Màu & Size) <span style={{color:'#ef4444'}}>*</span></label>
-            <div style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                {variants.map((varItem, index) => (
-                    <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
-                        <input 
-                            placeholder="Màu sắc (Vd: Đỏ)"
-                            value={varItem.color}
-                            onChange={e => updateVariant(index, 'color', e.target.value)}
-                            style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                        />
-                        <input 
-                            placeholder="Size (Vd: XL)"
-                            value={varItem.size}
-                            onChange={e => updateVariant(index, 'size', e.target.value)}
-                            style={{ width: '80px', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                        />
-                        <input 
-                            type="number"
-                            placeholder="Giá"
-                            value={varItem.price}
-                            onChange={e => updateVariant(index, 'price', Number(e.target.value))}
-                            style={{ width: '120px', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                        />
-                        {variants.length > 1 && (
-                            <button type="button" onClick={() => removeVariant(index)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Xóa dòng này">
-                                &times;
-                            </button>
-                        )}
-                    </div>
-                ))}
-                <button type="button" onClick={addVariant} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>
-                    + Thêm phân loại
-                </button>
-            </div>
+          <label style={{ fontWeight: 600, display: 'block', marginBottom: '10px' }}>
+              Danh sách phân loại hàng (Màu, Size, Giá, Ảnh) <span style={{color:'#ef4444'}}>*</span>
+          </label>
+          
+          <div style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              {/* 1. HIỆN CÁC PHÂN LOẠI (CŨ VÀ MỚI) */}
+              {variants.map((varItem, index) => (
+                  <div key={index} style={{ 
+                      display: 'grid', 
+                      // Chỉnh lại tỷ lệ cột cho đẹp
+                      gridTemplateColumns: '1fr 0.8fr 1.2fr 2fr 40px',
+                      gap: '10px', 
+                      marginBottom: '10px', 
+                      alignItems: 'center' 
+                  }}>
+                      <input 
+                          placeholder="Màu (Vd: Đỏ)"
+                          value={varItem.color}
+                          onChange={e => updateVariant(index, 'color', e.target.value)}
+                          className="form-control" // Nếu bạn có class css chung
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      />
+                      <input 
+                          placeholder="Size"
+                          value={varItem.size}
+                          onChange={e => updateVariant(index, 'size', e.target.value)}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      />
+                      <input 
+                          type="number"
+                          placeholder="Giá bán"
+                          value={varItem.price}
+                          onChange={e => updateVariant(index, 'price', Number(e.target.value))}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      />
+                      
+                      {/* Ô nhập ảnh + Preview nhỏ */}
+                      <div style={{ position: 'relative' }}>
+                          <input 
+                              placeholder="Link ảnh (https://...)"
+                              value={varItem.imageUrl}
+                              onChange={e => updateVariant(index, 'imageUrl', e.target.value)}
+                              style={{ width: '100%', padding: '8px 8px 8px 40px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                          />
+                          <div style={{ 
+                              position: 'absolute', left: 4, top: 4, width: 30, height: 30, 
+                              borderRadius: 3, overflow: 'hidden', background: '#eee',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                              {varItem.imageUrl ? (
+                                  <img src={varItem.imageUrl} style={{width:'100%', height:'100%', objectFit:'cover'}} onError={e => e.currentTarget.style.display='none'} />
+                              ) : <span style={{fontSize:12}}>📷</span>}
+                          </div>
+                      </div>
+
+                      {/* 3. NÚT XOÁ (X) */}
+                      {variants.length > 1 && (
+                          <button 
+                            type="button" 
+                            onClick={() => removeVariant(index)} 
+                            style={{ 
+                                color: '#ef4444', border: 'none', background: '#fee2e2', 
+                                width: '30px', height: '30px', borderRadius: '50%',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: 'bold'
+                            }}
+                            title="Xóa phân loại này"
+                          >
+                              &times;
+                          </button>
+                      )}
+                  </div>
+              ))}
+
+              {/* 2. NÚT THÊM PHÂN LOẠI (NẰM DƯỚI) */}
+              <button 
+                type="button" 
+                onClick={addVariant} 
+                style={{ 
+                    color: '#2563eb', background: 'transparent', border: '1px dashed #2563eb', 
+                    cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', marginTop: 10,
+                    padding: '8px 16px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px'
+                }}
+              >
+                  <span style={{fontSize: '1.2rem', lineHeight: 1}}>+</span> Thêm phân loại
+              </button>
+          </div>
         </div>
 
-        {/* Hàng 3: PHÂN LOẠI (Fix lỗi 'renderCategorySelection is unused') */}
         <div className="form-row" style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
               Phân loại <span style={{color:'#ef4444'}}>*</span>
             </label>
-            {/* 3. Gọi hàm renderCategorySelection tại đây */}
             {renderCategorySelection()}
         </div>
 
-        {/* Hàng 4: Mô tả */}
         <div className="form-row" style={{ marginBottom: '30px' }}>
           <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
             Mô tả
@@ -343,8 +408,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           />
         </div>
 
-        {/* Buttons */}
-        {error && <div style={{ color: '#dc2626', marginBottom: '15px', fontSize: '0.9rem' }}>{error}</div>}
         <div style={{ display: 'flex', gap: '12px' }}>
           <button 
             type="submit" 
