@@ -1,6 +1,6 @@
-# UNIQLO Mini - Hệ thống Quản lý Bán hàng (Fullstack)
+# UNIQLO Mini - Hệ thống Quản lý Bán hàng
 
-Dự án mô phỏng hệ thống quản lý bán hàng thời trang tối giản, bao gồm Frontend (ReactJS), Backend (Node.js/Express) và Database (SQL Server).
+Dự án mô phỏng hệ thống quản lý bán hàng thời trang, bao gồm Frontend (ReactJS), Backend (Node.js/Express) và Database (SQL Server).
 
 ## 🛠 Công nghệ sử dụng
 - **Frontend:** React (Vite), TypeScript, CSS/SCSS.
